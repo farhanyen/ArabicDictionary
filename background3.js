@@ -34,7 +34,6 @@ function getHeadersWithContentDispositionAttachment(details) {
 }
 
 function isPdfFile(details) {
-    console.log(details.responseHeaders);
     var header = getHeaderByName(details.responseHeaders, 'content-type');
     if (header) {
         var headerValue = header.value.toLowerCase().split(';', 1)[0].trim();
@@ -155,68 +154,6 @@ chrome.extension.isAllowedFileSchemeAccess(function (isAllowedAccess) {
     });
 });
 
-
-const callCheckDeepl = function (tab, sendResponse) {
-    chrome.tabs.sendMessage(
-        tab.id,
-        {
-            type: 'checkDeepl',
-        },
-        function (response) {
-            const translatedtext = response;
-            sendResponse({
-                text: translatedtext,
-            });
-            chrome.tabs.remove(tab.id);
-        }
-    );
-};
-
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-    chrome.storage.sync.get(null, function (items) {
-        let isOn = items.ison;
-        if (typeof isOn === 'undefined') {
-            isOn = true;
-        }
-        if (isOn && request.type == 'getTranslated') {
-            const targetText = request.text.replace(/%2F/g, '%5C%2F'); //added
-            const sourceLanguage = request.sourceLanguage;
-            const targetLanguage = request.targetLanguage;
-
-            chrome.tabs.create(
-                {
-                    url:
-                        'https://www.deepl.com/translator#' +
-                        sourceLanguage +
-                        '/' +
-                        targetLanguage +
-                        '/' +
-                        targetText,
-                    active: false,
-                },
-                function (tab) {
-                    /*
-                     * `chrome.tabs.create()` 直後は，生成されたタブにメッセージのリスナが存在しない．
-                     * リスナが存在しないタブに対して `chrome.tabs.sendMessage()` を行ってしまうと，次のエラーが発生する．
-                     * > Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
-                     * このため，リスナが登録されたことを確認してから `chrome.tabs.sendMessage()` を行う必要がある．
-                     * 生成されたタブから自発的に `ready` メッセージが送られて来れば，リスナが登録されたとわかる．
-                     */
-                    const listener = (message, sender) => {
-                        if (message.type !== 'ready' || sender.tab.id !== tab.id) {
-                            return;
-                        }
-
-                        chrome.runtime.onMessage.removeListener(listener);
-                        callCheckDeepl(tab, sendResponse);
-                    }
-                    chrome.runtime.onMessage.addListener(listener);
-                }
-            );
-        }
-    });
-    return true;
-});
 
 function updateIcon() {
     let isOn;
