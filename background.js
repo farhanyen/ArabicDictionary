@@ -58,23 +58,19 @@ function isPdfFile(details) {
 
 chrome.webRequest.onHeadersReceived.addListener(
     function (details) {
-      chrome.storage.sync.get('ison', function (items) {
-        let isOn = items.ison;
-        if (typeof isOn === 'undefined') {
-          isOn = true;
+        if (!isPdfFile(details)) {
+          return;
         }
-        if (isOn && isPdfFile(details)) {
-          if (isPdfDownloadable(details)) {
-            return getHeadersWithContentDispositionAttachment(details);
-          }
-          let url = details.url;
-          chrome.tabs.update(details.tabId, {
-            url: chrome.runtime.getURL(
-                `/pdf.js/web/viewer.html?file=${encodeURIComponent(url)}`
-            ),
-          });
+        if (isPdfDownloadable(details)) {
+          return getHeadersWithContentDispositionAttachment(details);
         }
-      });
+
+        let url = details.url;
+        chrome.tabs.update(details.tabId, {
+          url: chrome.runtime.getURL(
+              `/pdf.js/web/viewer.html?file=${encodeURIComponent(url)}`
+          ),
+        });
     },
     {
       urls: ['<all_urls>'],
@@ -85,38 +81,22 @@ chrome.webRequest.onHeadersReceived.addListener(
 
 chrome.webRequest.onBeforeRequest.addListener(
     function (details) {
-      chrome.storage.sync.get(null, async function (items) {
-        let isOn = items.ison;
-        if (typeof isOn === 'undefined') {
-          isOn = true;
-        }
-        if (isOn) {
-          if (isPdfDownloadable(details)) {
-            return;
-          }
-          let url = details.url;
-          console.log(details.url);
-          if (details.url.match(/file:\/\/.*.epub/) != null) {
-            console.log('epub detected');
-            const response = await fetch(details.url);
-            const blob = await response.blob();
-            console.log(blob);
+        let url = details.url;
 
-            chrome.tabs.update({
-              url: chrome.runtime.getURL(
-                  `/epub.js/examples/input.html?file=${encodeURIComponent(url)}`
-              ),
-            });
-            return;
-          }
-
+        if (details.url.match(/file:\/\/.*.epub/) != null) {
           chrome.tabs.update({
             url: chrome.runtime.getURL(
-                `/pdf.js/web/viewer.html?file=${encodeURIComponent(url)}`
+                `/epub.js/examples/input.html?file=${encodeURIComponent(url)}`
             ),
           });
+          return;
         }
-      });
+
+        chrome.tabs.update({
+          url: chrome.runtime.getURL(
+              `/pdf.js/web/viewer.html?file=${encodeURIComponent(url)}`
+          ),
+        });
     },
     {
       urls: [
@@ -132,6 +112,8 @@ chrome.webRequest.onBeforeRequest.addListener(
     ['blocking']
 );
 
+
+// chrome.storage.sync.get('ison', function (items) {}
 
 function updateIcon() {
   let isOn;
