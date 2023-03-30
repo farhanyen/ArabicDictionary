@@ -86,7 +86,7 @@ chrome.webRequest.onBeforeRequest.addListener(
         if (details.url.match(/file:\/\/.*.epub/) != null) {
           chrome.tabs.update({
             url: chrome.runtime.getURL(
-                `/epub.js/examples/input.html?file=${encodeURIComponent(url)}`
+                `/epub.js/viewer/viewer.html?file=${encodeURIComponent(url)}`
             ),
           });
           return;
