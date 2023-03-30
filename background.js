@@ -100,12 +100,10 @@ chrome.webRequest.onBeforeRequest.addListener(
     },
     {
       urls: [
+        'file://*/*.EPUB',
         'file://*/*.epub',
         'file://*/*.pdf',
         'file://*/*.PDF',
-        ...(MediaError.prototype.hasOwnProperty('message')
-            ? []
-            : ['ftp://*/*.pdf', 'ftp://*/*.PDF']),
       ],
       types: ['main_frame', 'sub_frame'],
     },
