@@ -85,7 +85,7 @@ chrome.webRequest.onHeadersReceived.addListener(
 
 chrome.webRequest.onBeforeRequest.addListener(
     function (details) {
-      chrome.storage.sync.get(null, function (items) {
+      chrome.storage.sync.get(null, async function (items) {
         let isOn = items.ison;
         if (typeof isOn === 'undefined') {
           isOn = true;
@@ -95,6 +95,21 @@ chrome.webRequest.onBeforeRequest.addListener(
             return;
           }
           let url = details.url;
+          console.log(details.url);
+          if (details.url.match(/file:\/\/.*.epub/) != null) {
+            console.log('epub detected');
+            const response = await fetch(details.url);
+            const blob = await response.blob();
+            console.log(blob);
+
+            chrome.tabs.update({
+              url: chrome.runtime.getURL(
+                  `/epub.js/examples/input.html?file=${encodeURIComponent(url)}`
+              ),
+            });
+            return;
+          }
+
           chrome.tabs.update({
             url: chrome.runtime.getURL(
                 `/pdf.js/web/viewer.html?file=${encodeURIComponent(url)}`
@@ -105,6 +120,7 @@ chrome.webRequest.onBeforeRequest.addListener(
     },
     {
       urls: [
+        'file://*/*.epub',
         'file://*/*.pdf',
         'file://*/*.PDF',
         ...(MediaError.prototype.hasOwnProperty('message')
@@ -116,43 +132,6 @@ chrome.webRequest.onBeforeRequest.addListener(
     ['blocking']
 );
 
-function getViewerURL(pdfUrl) {
-  return '/pdf.js/web / viewer.html' + '?file=' + encodeURIComponent(pdfUrl);
-}
-
-chrome.extension.isAllowedFileSchemeAccess(function (isAllowedAccess) {
-  if (isAllowedAccess) {
-    return;
-  }
-  chrome.webNavigation.onBeforeNavigate.addListener(function (details) {
-    chrome.storage.sync.get(
-        null,
-        function (items) {
-          let isOn = items.ison;
-          if (typeof isOn === 'undefined') {
-            isOn = true;
-          }
-          if (details.frameId === 0 && !isPdfDownloadable(details) && isOn) {
-            chrome.tabs.update(details.tabId, {
-              url: getViewerURL(details.url),
-            });
-          }
-        },
-        {
-          url: [
-            {
-              urlPrefix: 'file://',
-              pathSuffix: '.pdf',
-            },
-            {
-              urlPrefix: 'file://',
-              pathSuffix: '.PDF',
-            },
-          ],
-        }
-    );
-  });
-});
 
 function updateIcon() {
   let isOn;
