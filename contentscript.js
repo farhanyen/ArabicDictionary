@@ -44,7 +44,11 @@ function onMouseOut(e) {
     }
 
     tooltipManager.hideToolTip()
-    e.target.style.background = '';
+    // e.target.style.background = '';
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        selection.removeAllRanges();
+    }
 
     clearTimeout(e.target.dataset.timeout)
     delete e.target.dataset.timeout
@@ -54,8 +58,7 @@ function onLongHover(e) {
     if (e.target.dataset.hasOwnProperty('htmlCache')){
         return
     }
-    console.log("hovertarget:\n", e.target.innerHTML)
-
+    //console.log("hovertarget:\n", e.target.innerHTML)
 
     if (e.target.tagName == "IFRAME") {
         if ('listenersSet' in e.target.dataset) {
@@ -70,25 +73,27 @@ function onLongHover(e) {
 
     // get child nodes
     if (!e.target.hasChildNodes()) {
-        console.log("No Child nodes")
+        //console.log("No Child nodes")
         return
     }
+
     const nlist = Array.from(e.target.childNodes)
-    let textNodes = []
-    for (const child of nlist) {
-        if (child.nodeType == Node.TEXT_NODE && child.nodeValue.replace(/\s/g, '').length) {
-            textNodes.push(child)
-        }
-    }
+    const textNodes = nlist.filter(n =>
+        n.nodeType == Node.TEXT_NODE &&
+        n.nodeValue.replace(/\s/g, '').length);
+    // let textNodes = []
+    // for (const child of nlist) {
+    //     if (child.nodeType == Node.TEXT_NODE && child.nodeValue.replace(/\s/g, '').length) {
+    //         textNodes.push(child)
+    //     }
+    // }
     if (textNodes.length == 0)
         return
     if (nlist.length > 1) {
         cacheHTML(e.target)
         nextImmediate = true
 
-        console.log(nlist, textNodes)
         for (let textNode of textNodes) {
-            console.log("textnode: ", textNode.nodeValue)
             wrapNode.call(textNode, "span")
         }
         return
@@ -102,13 +107,15 @@ function onLongHover(e) {
         cacheHTML(e.target)
         nextImmediate = true
 
-        e.target.innerHTML = el_html.replace(/\S+|\s+/g, "<span>$&</span>")
+        e.target.innerHTML = el_html.replace(/\S+|\s+/g, "<span style='position:static'>$&</span>")
         return
     }
 
     translateWord(e.target)
     nextImmediate = false
 }
+
+
 
 function cacheHTML(el) {
     cachedElement = el
@@ -118,25 +125,31 @@ function cacheHTML(el) {
         elem.innerHTML = elem.dataset.htmlCache
         delete elem.dataset.htmlCache
         elem.removeEventListener("mouseleave", onMouseLeave)
-        // elem.removeEventListener("click", onClick)
     }
 
     function onMouseLeave(e) {
-        // console.log("leave:", e.target)
         console.assert(e.target.dataset.hasOwnProperty('htmlCache'))
         restoreCache(e.target)
     }
 
-    el.addEventListener("mouseleave", onMouseLeave)
+    // el.addEventListener("mouseleave", onMouseLeave)
 }
 
 function translateWord(el) {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        selection.removeAllRanges();
+    }
+    const range = document.createRange();
+    range.selectNode(el.childNodes[0]);
+    selection.addRange(range);
+
     const hit_word = el.textContent
     // console.log("Hit Word:", hit_word)
     const transList = translator.translateWordIfArabic(hit_word)
-    console.log(transList)
+    //console.log(transList)
     if (transList != null){
-        el.style.background = 'yellow'
+        // el.style.background = 'yellow'
         tooltipManager.displayToolTip(el, transList)
     }
 }
@@ -154,3 +167,10 @@ function unwrapNode(){
     gp.replaceChild(p, this)
 }
 
+function caretPositionWord(x, y) {
+    range = document.caretRangeFromPoint(x, y);
+    textNode = range.startContainer;
+    offset = range.startOffset;
+    console.log("Range:", range)
+    console.log("Range string", range.toString());
+}
