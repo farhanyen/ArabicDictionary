@@ -1,6 +1,6 @@
 
 function printFilePath(path) {
-    console.log("get translation from: ", path)
+    //console.log("get translation from: ", path)
 }
 
 async function readLocalFile(path) {
@@ -9,7 +9,7 @@ async function readLocalFile(path) {
         const data = await fs.readFile(path, { encoding: 'utf8' })
         return data
     } catch (err){
-        console.log(err)
+        //console.log(err)
     }
 }
 
@@ -91,9 +91,6 @@ Dict.prototype.init = async function() {
 
         const fields = line.split("\t")
         const key = fields[0]
-        if (fields.length < 4) {
-            console.log(fields)
-        }
         const entry = {
             diacrtics: fields[1],
             morph: fields[2],
@@ -243,13 +240,10 @@ for (const key in buck2uni) {
     uni2buck[buck2uni[key]] = key
 }
 
-function removePunctuation(word) {
-    const ar_punc = '\u060C\u060D\u060E\u060F\u061B\u061E\u061F'
-    const en_punc = ':;.!\'"-_`~\\s\\[\\]\\{\\}\\^\\$\\*\\+'
-    const punc = `${ar_punc}${en_punc}`
-    const re = new RegExp(`^[${punc}]*|[${punc}]*$`, 'g')
-    return word.replace(re,'')
+function isArabicChar(c) {
+    return c in uni2buck;
 }
+
 function transliterate(uniWord) {
     return uniWord.replace(new RegExp(Object.keys(uni2buck).join('|'), 'g'), (c) => uni2buck[c])
 }
@@ -276,13 +270,21 @@ function translateRawWord(uniWord) {
 //
 // translateRawWord(testWord)
 
+function removePunctuation(word) {
+    const ar_punc = '\u060C\u060D\u060E\u060F\u061B\u061E\u061F'
+    const en_punc = '»«:;.!\'"-_`~\\s\\[\\]\\{\\}\\^\\$\\*\\+'
+    const punc = `${ar_punc}${en_punc}`
+    const re = new RegExp(`^[${punc}]*| |[${punc}]*$`, 'g')
+    return word.replace(re,'')
+}
+
 function translateWordIfArabic(word) {
     // const arabic = /^[\u0600-\u06FF]*$/
     word = removePunctuation(word)
-    // console.log("trimmed word:", word)
+    //console.log("trimmed word:", word)
     const arabic = new RegExp(Object.keys(uni2buck).join('|'), 'g')
     if (!arabic.test(word)) {
-        console.log("not arabic word")
+        //console.log("not arabic word")
         return null
     }
     return translateRawWord(word)
@@ -295,4 +297,4 @@ for (const word of testWords) {
 }
 
 
-export {translateWordIfArabic, loadDictData}
+export {translateWordIfArabic, loadDictData, isArabicChar}

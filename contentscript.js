@@ -1,3 +1,4 @@
+
 let translator, tooltipManager
 let isEnabled = true
 
@@ -7,16 +8,19 @@ if (typeof browser == "undefined") {
 async function initialize() {
     console.log("Start Import")
     const transFile = chrome.runtime.getURL('./translator.js');
-    console.log(transFile)
+    // const transFile = './translator.js';
     translator = await import(transFile)
-    const toolTipFile = chrome.runtime.getURL('./tooltip.js')
-    console.log(toolTipFile)
+    const toolTipFile = chrome.runtime.getURL('./tooltip.js');
+    // const toolTipFile = './tooltip.js';
     tooltipManager = await import(toolTipFile)
+    // document.addEventListener("mouseover", onMouseOverSpan)
+    // document.addEventListener("mouseout", onMouseOutSpan)
     document.addEventListener("mouseover", onMouseOver)
-    document.addEventListener("mouseout", onMouseOut)
+    // document.addEventListener("mouseout", onMouseOutSpan)
+    document.addEventListener("mousemove", onMouseMove)
 
     chrome.runtime.onMessage.addListener(msg => {
-        if (msg === "toggleExtension"){
+        if (msg === "toggleExtension") {
             console.log("success")
             isEnabled = !isEnabled
         }
@@ -25,30 +29,33 @@ async function initialize() {
 
 initialize()
 
+
 let nextImmediate = false
-function onMouseOver(e) {
+function onMouseOverSpan(e) {
     if (!isEnabled) {
         return
+    }
+
+    if (e.target.tagName == "IFRAME" && !('listenersSet' in e.target.dataset)) {
+        e.target.contentWindow.document.addEventListener("mouseover", onMouseOverSpan)
+        e.target.contentWindow.document.addEventListener("mouseout", onMouseOutSpan)
+        e.target.dataset.listenersSet = 'true'
     }
 
     if (nextImmediate) {
         onLongHover(e)
     } else {
-        e.target.dataset.timeout = setTimeout(onLongHover, 200, e)
+        e.target.dataset.timeout = setTimeout(onLongHover, 500, e)
     }
 }
 
-function onMouseOut(e) {
+function onMouseOutSpan(e) {
     if (!isEnabled) {
         return
     }
 
     tooltipManager.hideToolTip()
-    // e.target.style.background = '';
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-        selection.removeAllRanges();
-    }
+    e.target.style.background = '';
 
     clearTimeout(e.target.dataset.timeout)
     delete e.target.dataset.timeout
@@ -58,22 +65,14 @@ function onLongHover(e) {
     if (e.target.dataset.hasOwnProperty('htmlCache')){
         return
     }
-    //console.log("hovertarget:\n", e.target.innerHTML)
+    // console.log("hovertarget:\n", e.target.innerHTML)
 
+    translateWordSpan(e);
+    // translateWordFromPoint(e.target, e.clientX, e.clientY);
+}
+
+function translateWordSpan(e) {
     if (e.target.tagName == "IFRAME") {
-        if ('listenersSet' in e.target.dataset) {
-            return
-        }
-        e.target.contentWindow.document.addEventListener("mouseover", onMouseOver)
-        e.target.contentWindow.document.addEventListener("mouseout", onMouseOut)
-        e.target.dataset.listenersSet = 'true'
-        console.log("added iframe listeners")
-        nextImmediate = true
-    }
-
-    // get child nodes
-    if (!e.target.hasChildNodes()) {
-        //console.log("No Child nodes")
         return
     }
 
@@ -81,18 +80,11 @@ function onLongHover(e) {
     const textNodes = nlist.filter(n =>
         n.nodeType == Node.TEXT_NODE &&
         n.nodeValue.replace(/\s/g, '').length);
-    // let textNodes = []
-    // for (const child of nlist) {
-    //     if (child.nodeType == Node.TEXT_NODE && child.nodeValue.replace(/\s/g, '').length) {
-    //         textNodes.push(child)
-    //     }
-    // }
     if (textNodes.length == 0)
         return
     if (nlist.length > 1) {
         cacheHTML(e.target)
         nextImmediate = true
-
         for (let textNode of textNodes) {
             wrapNode.call(textNode, "span")
         }
@@ -118,6 +110,7 @@ function onLongHover(e) {
 
 
 function cacheHTML(el) {
+    return;
     cachedElement = el
     el.dataset.htmlCache = el.innerHTML
 
@@ -132,25 +125,17 @@ function cacheHTML(el) {
         restoreCache(e.target)
     }
 
-    // el.addEventListener("mouseleave", onMouseLeave)
+    el.addEventListener("mouseleave", onMouseLeave)
 }
 
 function translateWord(el) {
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-        selection.removeAllRanges();
-    }
-    const range = document.createRange();
-    range.selectNode(el.childNodes[0]);
-    selection.addRange(range);
-
     const hit_word = el.textContent
     // console.log("Hit Word:", hit_word)
     const transList = translator.translateWordIfArabic(hit_word)
     //console.log(transList)
     if (transList != null){
-        // el.style.background = 'yellow'
-        tooltipManager.displayToolTip(el, transList)
+        el.style.background = 'yellow';
+        tooltipManager.displayToolTip(el, el.getBoundingClientRect(), transList)
     }
 }
 
@@ -173,4 +158,181 @@ function caretPositionWord(x, y) {
     offset = range.startOffset;
     console.log("Range:", range)
     console.log("Range string", range.toString());
+}
+
+
+
+let mouseStillTimeout, wordRange
+
+function onMouseOver(e) {
+    if (e.target.tagName == "IFRAME") {
+        // clearTimeout(mouseStillTimeout);
+
+        if (!('listenersSet' in e.target.dataset)) {
+            e.target.contentWindow.document.addEventListener("mouseover", onMouseOver);
+            // e.target.contentWindow.document.addEventListener("mouseout", onMouseOut)
+            e.target.contentWindow.document.addEventListener("mousemove", onMouseMove);
+            e.target.dataset.listenersSet = 'true';
+        }
+    }
+}
+
+function onMouseMove(e) {
+    if (wordRange) {
+        if (within(e.clientX, e.clientY, wordRange.getBoundingClientRect())) {
+            return;
+        }
+
+        unSelectWord();
+        tooltipManager.hideToolTip();
+    }
+
+    clearTimeout(mouseStillTimeout);
+    mouseStillTimeout = setTimeout(onMouseStill, 100, e);
+}
+
+function onMouseStill(e) {
+    // console.log(e.target, e.clientX, e.clientY);
+    translateWordFromPoint(e.target, e.clientX, e.clientY);
+}
+
+function within(x, y, rect) {
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
+function selectWord(r) {
+    wordRange = r
+    const selection = wordRange.startContainer.ownerDocument.getSelection();
+    // if (selection.rangeCount == 1 && selection.getRangeAt(0).toString() == '') {
+        selection.removeAllRanges();
+    // }
+    selection.addRange(wordRange);
+}
+
+function unSelectWord() {
+    const selection = wordRange.startContainer.ownerDocument.getSelection();
+    selection.removeRange(wordRange);
+    wordRange = null;
+}
+
+function getTextNodeFromPoint(n, x, y) {
+    if (n.nodeType == Node.TEXT_NODE) {
+        return n;
+    }
+    range = document.createRange();
+    for (let i = 0; i < n.childNodes.length; i++) {
+        let c = n.childNodes[i];
+        range.selectNode(c);
+        if (within(x, y, range.getBoundingClientRect())) {
+            return getTextNodeFromPoint(c, x, y);
+        }
+    }
+    return null;
+}
+
+function getCharRangeFromPoint(t, x, y) {
+    let range = document.createRange();
+    range.selectNodeContents(t);
+
+    let endPos = range.endOffset;
+    for (let curPos = 0; curPos < endPos; curPos++) {
+        range.setStart(t, curPos);
+        range.setEnd(t, curPos+1);
+        if (within(x, y, range.getBoundingClientRect())) {
+            return range;
+        }
+    }
+    return null;
+}
+
+// function expandCharRange
+function expandCharRangeToWord(r) {
+    let t = r.startContainer;
+    let s = t.nodeValue
+    let i = r.startOffset;
+    let j = r.endOffset;
+
+    while (j < s.length && s[j] != ' ')
+        j++;
+    while ((i-1) > 0 && s[(i-1)] != ' ')
+        i--;
+
+    r.setStart(t, i);
+    r.setEnd(t, j);
+}
+function translateWordFromPoint(el, x, y) {
+    let t = getTextNodeFromPoint(el, x, y);
+    if (t == null)
+        return;
+
+    let r = getCharRangeFromPoint(t, x, y);
+    if (r == null)
+        return;
+
+    // let t = r.startContainer;
+    let s = t.nodeValue
+    let i = r.startOffset;
+    let j = r.endOffset;
+
+    if (!translator.isArabicChar(s[i]))
+        return;
+    while (j < s.length && translator.isArabicChar(s[j]))
+        j++;
+    while ((i-1) > 0 && translator.isArabicChar(s[(i-1)]))
+        i--;
+
+    r.setStart(t, i);
+    r.setEnd(t, j);
+    let transList = translator.translateWordIfArabic(r.toString());
+    if (transList != null && transList.length > 0) {
+        selectWord(r);
+        tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+        return;
+    }
+
+    let orTransList = transList; let ori = i, orj = j;
+    if (j < s.length && s[j] == ' ')
+        j++;
+    if((i-1) > 0 && s[(i-1)] == ' ')
+        i--;
+
+    while (j < s.length && translator.isArabicChar(s[j]))
+        j++;
+    while ((i-1) > 0 && translator.isArabicChar(s[(i-1)]))
+        i--;
+
+    r.setStart(t, ori);
+    r.setEnd(t, j);
+    transList = translator.translateWordIfArabic(r.toString());
+    if (transList != null && transList.length > 0) {
+        selectWord(r);
+        tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+        return;
+    }
+
+    r.setStart(t, i);
+    r.setEnd(t, orj);
+    transList = translator.translateWordIfArabic(r.toString());
+    if (transList != null && transList.length > 0) {
+        selectWord(r);
+        tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+        return;
+    }
+
+    r.setStart(t, i);
+    r.setEnd(t, j);
+    transList = translator.translateWordIfArabic(r.toString());
+    if (transList != null && transList.length > 0) {
+        selectWord(r);
+        tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+        return;
+    }
+
+    r.setStart(t, ori);
+    r.setEnd(t, orj);
+    transList = orTransList;
+    if (transList != null) {
+        selectWord(r);
+        tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+    }
 }

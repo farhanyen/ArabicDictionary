@@ -42,20 +42,20 @@ function createTransPopupHTML(transList) {
     str += "</table>"
     return str
 }
-function displayToolTip(el, transList) {
+function displayToolTip(el, wRect, transList) {
     tooltip.innerHTML = createTransPopupHTML(transList)
 
-    positionTooltip(el)
+    positionTooltip(el, wRect)
 
     tooltip.style.visibility = "visible"
 }
 
-function positionTooltip(el) {
-    let wordRect = JSON.parse(JSON.stringify(el.getBoundingClientRect()))
+function positionTooltip(el, wRect) {
+    let wordRect = JSON.parse(JSON.stringify(wRect))
     
     let ancestorIFrame = el.ownerDocument.defaultView.frameElement
     if (ancestorIFrame) {
-        console.log(ancestorIFrame)
+        // console.log(ancestorIFrame)
         let ancRect = ancestorIFrame.getBoundingClientRect()
         Array.from(['left','right','x']).forEach(key => {wordRect[key] += ancRect['x']})
         Array.from(['top','bottom','y']).forEach(key => {wordRect[key] += ancRect['y']})
