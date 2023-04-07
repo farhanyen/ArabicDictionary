@@ -11,7 +11,7 @@
     "matches": ["<all_urls>"],
     "all_frames": true,
     "js": ["contentscript.js"],
-    "css": ["tooltip.css"]
+    "css": ["tooltip.css", "selection.css"]
   }],
   "description": "Chrome extension to format and translate selected text directly from PDF files with DeepL.",
   "icons": {
@@ -22,7 +22,7 @@
   "browser_action": {
     "name": "Click to change the icon's color"
   },
-  "web_accessible_resources": ["translator.js", "tooltip.js", "data/*"],
+  "web_accessible_resources": ["translator.js", "tooltip.js", "data/*", "selection.css"],
   "permissions": [
     "tabs",
     "webNavigation",

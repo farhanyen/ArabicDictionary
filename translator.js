@@ -34,7 +34,6 @@ async function readFile(path) {
 // console.log(dictPref)
 // console.log(dictStem)
 
-
 function MorphTable(path) {
     this.path = path
 }
@@ -92,7 +91,7 @@ Dict.prototype.init = async function() {
         const fields = line.split("\t")
         const key = fields[0]
         const entry = {
-            diacrtics: fields[1],
+            diacritics: fields[1],
             morph: fields[2],
             def: fields[3].split(/\[|</)[0].trim(),
             root: root
@@ -154,7 +153,7 @@ function translateComponents(pref, stem, suff) {
                     continue
 
                 const trans = {
-                    word: prefEntry.diacrtics+stemEntry.diacrtics+suffEntry.diacrtics,
+                    word: prefEntry.diacritics+stemEntry.diacritics+suffEntry.diacritics,
                     def: (prefEntry.def ?`[${prefEntry.def}] `:"") + stemEntry.def + (suffEntry.def ?` [${suffEntry.def}]`:""),
                     root: stemEntry.root
                 }
@@ -173,13 +172,20 @@ function checkMorph(prefEntry, stemEntry, suffEntry) {
     return (tableab[a].includes(b) && tablebc[b].includes(c) && tableac[a].includes(c))
 }
 
-const diacritics = ['F','N','K','a','u','i','~','o']
+const harakat = ['F','N','K','a','u','i','~','o','`']
 
-function removeDiacratics(word) {
-    return word.replace(new RegExp(diacritics.join('|'), 'g'), '')
+function removeHarakat(word) {
+    return word.replace(new RegExp(harakat.join('|'), 'g'), '')
 }
+
+function buckStrip(buckWord) {
+    buckWord = removeLetterMods(buckWord)
+    return removeHarakat(buckWord)
+}
+
+
 // translateWord("wAlgAz")
-// translateWord(removeDiacratics('wa>alogAz'))
+// translateWord(removeHarakat('wa>alogAz'))
 
 let buck2uni = {
     "'": "\u0621",
@@ -260,15 +266,129 @@ function detransliterateTransList(transList) {
     }
 }
 function translateRawWord(uniWord) {
-    let transList = translateWord(removeDiacratics(transliterate(uniWord)))
+    let transList = translateWord(removeHarakat(transliterate(uniWord)))
+    // console.log(transList)
+    transList = removeConflictingTrans(transList, transliterate(uniWord))
     detransliterateTransList(transList)
     return transList
 }
 
-// let testWord = "الغاز"
-// console.log(transliterate(testWord))
+function removeConflictingTrans(transList, litWord) {
+    let newList = [];
+    for (let trans of transList) {
+        if (matchWord(trans.word, litWord))
+            newList.push(trans)
+    }
+    if (newList.length > 0)
+        return newList
+    return transList
+}
+
+
+let stripMods = {
+    '|':'A',
+    '>': 'A',
+    '<': 'A',
+    '{': 'A',
+    '&': 'w',
+    'Y': 'y',
+    'p': 'h'
+}
+function removeLetterMods(buckWord) {
+    function replacer(match, p1, offset, string) {
+        return stripMods[p1];
+    }
+    return buckWord.replace(/(\||>|<|\{|&|Y|p)/g, replacer)
+}
+
+function getLetters(w) {
+    let s = 0, i = 0;
+    let letters = [];
+    while (i < w.length) {
+        s = i;
+        i++;
+        while (harakat.includes(w[i])) {
+            i++;
+        }
+        letters.push(w.slice(s, i));
+    }
+    return letters;
+}
+
+function matchWord(w1, w2) {
+    w1 = removeLetterMods(w1), w2 = removeLetterMods(w2)
+    let l1 = getLetters(w1), l2 = getLetters(w2);
+    if (l1.length != l2.length) {
+        console.log("Different no of letters:", l1, l2);
+        return false;
+    }
+
+    for (let i = 0; i < l1.length-1; i++) {
+        if (l1[i][0] != l2[i][0]) {
+            console.log("letter n consonant different:", i, l1, l2);
+            return false;
+        }
+        if (l1[i].length > 1 && l2[i].length > 1 && l1[i] != l2[i]) {
+            return false
+        }
+    }
+    return true;
+}
+
+const exceptions = [
+    "|nA'}",
+    "bay~umiy~",
+    "mAjAhiyr",
+    "jahowA'",
+    "ra&uwf",
+    "ra&uwf",
+    "salomawiy~",
+    "guwAyAnA",
+    "faroHAt",
+    "na$A$iybiy~"
+]
+
+// import assert from 'assert';
+// for (const key in dictStem) {
+//     if (key == "path" || typeof dictStem[key] === 'function')
+//         continue;
 //
-// translateRawWord(testWord)
+//     for (const stemEntry of dictStem[key]) {
+//         if (exceptions.includes(stemEntry.diacritics))
+//             continue;
+//         if(!(matchWord(key, stemEntry.diacritics))) {
+//             console.log(key, stemEntry.diacritics);
+//             assert(1==0);
+//         }
+//         if (!(removeLetterMods(key) == buckStrip(stemEntry.diacritics))) {
+//             console.log(key, stemEntry.diacritics, removeLetterMods(key), buckStrip(stemEntry.diacritics));
+//             assert(1==0);
+//         }
+//     }
+// }
+
+// let testWord1 = "بَقِيَ"
+let testWord2 =  "يُحِبُّ"
+// let testWord3 ="نَابِهٍ"
+
+// let tWord0 = "bqiy"
+// let tWord1 = "baq~ayo"
+// let tWord2 = "baq~ay~a"
+// let tWord3 = "baqiya"
+
+// let tWord0 = "yuHib~u"
+// let tWord1 = "yaHib~"
+// let tWord2 = "yaHob"
+// let tWord3 = "yuHib~"
+
+// console.log(transliterate(testWord1));
+// console.log(transliterate(testWord2));
+// console.log(transliterate(testWord3));
+// console.log(getLetters(tWord1));
+// console.log(matchWord(tWord0, tWord1));
+// console.log(matchWord(tWord0, tWord2));
+// console.log(matchWord(tWord0, tWord3));
+// console.log(translateWordIfArabic(testWord3));
 
 function removePunctuation(word) {
     const ar_punc = '\u060C\u060D\u060E\u060F\u061B\u061E\u061F'
@@ -279,12 +399,9 @@ function removePunctuation(word) {
 }
 
 function translateWordIfArabic(word) {
-    // const arabic = /^[\u0600-\u06FF]*$/
     word = removePunctuation(word)
-    //console.log("trimmed word:", word)
     const arabic = new RegExp(Object.keys(uni2buck).join('|'), 'g')
     if (!arabic.test(word)) {
-        //console.log("not arabic word")
         return null
     }
     return translateRawWord(word)
@@ -296,5 +413,24 @@ for (const word of testWords) {
     translateWordIfArabic(word)
 }
 
+async function translateSentence(s) {
+    let apiroot = "https://translate.googleapis.com/translate_a/single?"
+    let params = {
+        client: "gtx",
+        sl: "ar",
+        tl: "en",
+        dt: "t",
+        dj: "1",
+        tk: "435555.435555",
+        q: s
+    };
+    let paramStr = new URLSearchParams(params);
+    let url = apiroot + paramStr;
+    const response = await fetch(url, {method: "GET"});
+    if (response.status != 200)
+        return null
+    let body = await response.json();
+    return body["sentences"][0]["trans"];
+}
 
-export {translateWordIfArabic, loadDictData, isArabicChar}
+export {translateWordIfArabic, loadDictData, isArabicChar, translateSentence}

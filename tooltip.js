@@ -42,6 +42,21 @@ function createTransPopupHTML(transList) {
     str += "</table>"
     return str
 }
+
+function setSentenceTransPopup(transSentence) {
+    tooltip.innerHTML = createSentenceTransHTML(transSentence);
+}
+function createSentenceTransHTML(transSentence) {
+    let str = ""
+    str += "<table class = 'tooltip-table'>"
+
+    str += "<tr>"
+    str += `<td>${transSentence}</td>`
+    str += "</tr>"
+
+    return str
+}
+
 function displayToolTip(el, wRect, transList) {
     tooltip.innerHTML = createTransPopupHTML(transList)
 
@@ -85,4 +100,4 @@ function hideToolTip() {
 
 createToolTip()
 
-export {displayToolTip, hideToolTip}
+export {displayToolTip, hideToolTip, setSentenceTransPopup}

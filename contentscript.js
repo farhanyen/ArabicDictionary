@@ -1,10 +1,10 @@
-
 let translator, tooltipManager
 let isEnabled = true
 
 if (typeof browser == "undefined") {
     browser = chrome
 }
+
 async function initialize() {
     console.log("Start Import")
     const transFile = chrome.runtime.getURL('./translator.js');
@@ -25,12 +25,19 @@ async function initialize() {
             isEnabled = !isEnabled
         }
     });
+
+    // let link = document.createElement("link");
+    // link.type = "text/css";
+    // link.rel = "stylesheet";
+    // link.href =  chrome.runtime.getURL("./selection.css");
+    // // document.head.appendChild(link);
 }
 
 initialize()
 
 
 let nextImmediate = false
+
 function onMouseOverSpan(e) {
     if (!isEnabled) {
         return
@@ -62,7 +69,7 @@ function onMouseOutSpan(e) {
 }
 
 function onLongHover(e) {
-    if (e.target.dataset.hasOwnProperty('htmlCache')){
+    if (e.target.dataset.hasOwnProperty('htmlCache')) {
         return
     }
     // console.log("hovertarget:\n", e.target.innerHTML)
@@ -108,7 +115,6 @@ function translateWordSpan(e) {
 }
 
 
-
 function cacheHTML(el) {
     return;
     cachedElement = el
@@ -133,34 +139,24 @@ function translateWord(el) {
     // console.log("Hit Word:", hit_word)
     const transList = translator.translateWordIfArabic(hit_word)
     //console.log(transList)
-    if (transList != null){
+    if (transList != null) {
         el.style.background = 'yellow';
         tooltipManager.displayToolTip(el, el.getBoundingClientRect(), transList)
     }
 }
 
-function wrapNode(elemName){
+function wrapNode(elemName) {
     const p = this.parentNode
     const elem = document.createElement(elemName)
     p.insertBefore(elem, this)
     elem.appendChild(this)
 }
 
-function unwrapNode(){
+function unwrapNode() {
     const p = this.parentNode
     const gp = p.parentNode
     gp.replaceChild(p, this)
 }
-
-function caretPositionWord(x, y) {
-    range = document.caretRangeFromPoint(x, y);
-    textNode = range.startContainer;
-    offset = range.startOffset;
-    console.log("Range:", range)
-    console.log("Range string", range.toString());
-}
-
-
 
 let mouseStillTimeout, wordRange
 
@@ -170,16 +166,17 @@ function onMouseOver(e) {
 
         if (!('listenersSet' in e.target.dataset)) {
             e.target.contentWindow.document.addEventListener("mouseover", onMouseOver);
-            // e.target.contentWindow.document.addEventListener("mouseout", onMouseOut)
             e.target.contentWindow.document.addEventListener("mousemove", onMouseMove);
+            e.target.contentWindow.document.addEventListener("keyup", onKeyUp);
             e.target.dataset.listenersSet = 'true';
         }
     }
 }
 
 function onMouseMove(e) {
+    let x = e.clientX, y = e.clientY;
     if (wordRange) {
-        if (within(e.clientX, e.clientY, wordRange.getBoundingClientRect())) {
+        if (within(x, y, wordRange.getBoundingClientRect())) {
             return;
         }
 
@@ -204,15 +201,20 @@ function selectWord(r) {
     wordRange = r
     const selection = wordRange.startContainer.ownerDocument.getSelection();
     // if (selection.rangeCount == 1 && selection.getRangeAt(0).toString() == '') {
-        selection.removeAllRanges();
+    selection.removeAllRanges();
     // }
+    wordRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", 'yellow');
     selection.addRange(wordRange);
 }
 
 function unSelectWord() {
     const selection = wordRange.startContainer.ownerDocument.getSelection();
-    selection.removeRange(wordRange);
+    if (selection)
+        selection.removeRange(wordRange);
+
+    wordRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", '#ACCEF7');
     wordRange = null;
+    sentence = false;
 }
 
 function getTextNodeFromPoint(n, x, y) {
@@ -237,7 +239,7 @@ function getCharRangeFromPoint(t, x, y) {
     let endPos = range.endOffset;
     for (let curPos = 0; curPos < endPos; curPos++) {
         range.setStart(t, curPos);
-        range.setEnd(t, curPos+1);
+        range.setEnd(t, curPos + 1);
         if (within(x, y, range.getBoundingClientRect())) {
             return range;
         }
@@ -254,12 +256,91 @@ function expandCharRangeToWord(r) {
 
     while (j < s.length && s[j] != ' ')
         j++;
-    while ((i-1) > 0 && s[(i-1)] != ' ')
+    while ((i - 1) >= 0 && s[(i - 1)] != ' ')
         i--;
 
     r.setStart(t, i);
     r.setEnd(t, j);
 }
+
+// document.addEventListener("keydowm", onKeyDown);
+document.addEventListener("keyup", onKeyUp);
+
+
+// function onKeyDown(e) {
+//     if (e.key == 's' && !e.repeat)
+//         translateCurrentSentence();
+// }
+let sentence = false;
+
+function onKeyUp(e) {
+    if (e.key == "s") {
+        if (sentence) {
+            sentence = false;
+            unSelectWord();
+            tooltipManager.hideToolTip();
+        } else {
+            translateCurrentSentence();
+        }
+    } else if (e.key == "v") {
+        voiceCurrentSelection();
+    }
+}
+
+async function translateCurrentSentence() {
+    if (wordRange == null)
+        return;
+    selectCurrentSentence();
+    let transSentence = await translator.translateSentence(wordRange.toString());
+    tooltipManager.setSentenceTransPopup(transSentence);
+    sentence = true;
+}
+
+function selectCurrentSentence() {
+    let r = wordRange;
+    let t = r.startContainer;
+    let s = t.nodeValue
+    let i = r.startOffset;
+    let j = r.endOffset;
+
+    while (j < s.length && s[j - 1] != '.')
+        j++;
+    while ((i - 1) >= 0 && s[(i - 1)] != '.')
+        i--;
+
+    r.setStart(t, i);
+    r.setEnd(t, j);
+}
+
+async function voiceCurrentSelection() {
+    console.log("v fired");
+    if (wordRange == null)
+        return;
+    const apiroot = "https://translate.googleapis.com/translate_tts?";
+    let params = {
+        client: "gtx",
+        ie: ":UTF-8",
+        tl: "ar",
+        tk: "435555.435555",
+        q: wordRange.toString()
+    };
+    const paramStr = new URLSearchParams(params);
+    const url = apiroot + paramStr;
+
+    const response = await fetch(url, {method: "GET"});
+    if (response.status != 200)
+        return null;
+
+    const ctx = new AudioContext();
+    let audioBuf = await response.arrayBuffer();
+    let audio = await ctx.decodeAudioData(audioBuf);
+
+    const playSound = ctx.createBufferSource();
+    playSound.buffer = audio;
+    playSound.connect(ctx.destination);
+    playSound.start(ctx.currentTime);
+}
+
 function translateWordFromPoint(el, x, y) {
     let t = getTextNodeFromPoint(el, x, y);
     if (t == null)
@@ -270,7 +351,7 @@ function translateWordFromPoint(el, x, y) {
         return;
 
     // let t = r.startContainer;
-    let s = t.nodeValue
+    let s = t.nodeValue;
     let i = r.startOffset;
     let j = r.endOffset;
 
@@ -278,7 +359,7 @@ function translateWordFromPoint(el, x, y) {
         return;
     while (j < s.length && translator.isArabicChar(s[j]))
         j++;
-    while ((i-1) > 0 && translator.isArabicChar(s[(i-1)]))
+    while ((i - 1) >= 0 && translator.isArabicChar(s[(i - 1)]))
         i--;
 
     r.setStart(t, i);
@@ -290,15 +371,16 @@ function translateWordFromPoint(el, x, y) {
         return;
     }
 
-    let orTransList = transList; let ori = i, orj = j;
+    let orTransList = transList;
+    let ori = i, orj = j;
     if (j < s.length && s[j] == ' ')
         j++;
-    if((i-1) > 0 && s[(i-1)] == ' ')
+    if ((i - 1) >= 0 && s[(i - 1)] == ' ')
         i--;
 
     while (j < s.length && translator.isArabicChar(s[j]))
         j++;
-    while ((i-1) > 0 && translator.isArabicChar(s[(i-1)]))
+    while ((i - 1) >= 0 && translator.isArabicChar(s[(i - 1)]))
         i--;
 
     r.setStart(t, ori);

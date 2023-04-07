@@ -1,0 +1,6 @@
+:root {
+    --selection-bg-color: #ACCEF7;
+}
+::selection {
+    background-color: var(--selection-bg-color);
+}
