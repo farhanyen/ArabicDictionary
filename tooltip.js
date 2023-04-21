@@ -22,7 +22,7 @@ function createTransPopupHTML(transList) {
         str += "<td>No definition found</td>"
         str += "</tr>"
         str += "</table>"
-        str += "</div>"
+        // str += "</div>"
         return str
     }
 

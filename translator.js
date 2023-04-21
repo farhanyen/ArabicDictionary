@@ -240,7 +240,6 @@ let buck2uni = {
     "V": "\u06A4",
     "G": "\u06AF"
 }
-
 let uni2buck = {}
 for (const key in buck2uni) {
     uni2buck[buck2uni[key]] = key
@@ -266,9 +265,11 @@ function detransliterateTransList(transList) {
     }
 }
 function translateRawWord(uniWord) {
-    let transList = translateWord(removeHarakat(transliterate(uniWord)))
+    let buckWord = transliterate(uniWord)
+    buckWord = stripHarakat(buckWord)
+    let transList = translateWord(removeHarakat(buckWord))
     // console.log(transList)
-    transList = removeConflictingTrans(transList, transliterate(uniWord))
+    transList = removeConflictingTrans(transList, buckWord)
     detransliterateTransList(transList)
     return transList
 }
@@ -284,6 +285,21 @@ function removeConflictingTrans(transList, litWord) {
     return transList
 }
 
+function matchWord(w1, w2) {
+    w1 = removeLetterMods(w1), w2 = removeLetterMods(w2)
+    let ls1 = getLetters(w1), ls2 = getLetters(w2);
+    if (ls1.length != ls2.length) {
+        console.log("Different no of letters:", ls1, ls2);
+        return false;
+    }
+
+    for (let i = 0; i < ls1.length-1; i++) {
+        if (!compareLetters(ls1[i], ls2[i])) {
+            return false;
+        }
+    }
+    return true;
+}
 
 let stripMods = {
     '|':'A',
@@ -305,8 +321,7 @@ function getLetters(w) {
     let s = 0, i = 0;
     let letters = [];
     while (i < w.length) {
-        s = i;
-        i++;
+        s = i; i++;
         while (harakat.includes(w[i])) {
             i++;
         }
@@ -315,25 +330,33 @@ function getLetters(w) {
     return letters;
 }
 
-function matchWord(w1, w2) {
-    w1 = removeLetterMods(w1), w2 = removeLetterMods(w2)
-    let l1 = getLetters(w1), l2 = getLetters(w2);
-    if (l1.length != l2.length) {
-        console.log("Different no of letters:", l1, l2);
-        return false;
-    }
+function compareLetters (l1, l2) {
+    let sub1 = l1.split('').every(c => l2.includes(c))
+    let sub2 = l2.split('').every(c => l1.includes(c))
 
-    for (let i = 0; i < l1.length-1; i++) {
-        if (l1[i][0] != l2[i][0]) {
-            console.log("letter n consonant different:", i, l1, l2);
-            return false;
-        }
-        if (l1[i].length > 1 && l2[i].length > 1 && l1[i] != l2[i]) {
-            return false
-        }
-    }
-    return true;
+    return sub1 || sub2;
 }
+
+
+// let tWord1 = "رَبُّهُ"
+// let tWord2 = "رَبُّهُۥ"
+//
+// console.log(transliterate(tWord1))
+// console.log(translateWordIfArabic(tWord1))
+//
+// console.log(transliterate(tWord2))
+// console.log(translateWordIfArabic(tWord2))
+
+// let tWord3 = "نَحْوَها"
+// console.log(transliterate(tWord3))
+// console.log(translateWordIfArabic(tWord3))
+
+
+// let tWord4 = " ْتَجِد"
+// console.log(transliterate(tWord4))
+// // console.log(translateWordIfArabic(tWord4))
+// console.log(stripHarakat(transliterate(stripNonArabic(tWord4))))
+// console.log(translateWordIfArabic(tWord4))
 
 const exceptions = [
     "|nA'}",
@@ -367,29 +390,6 @@ const exceptions = [
 //     }
 // }
 
-// let testWord1 = "بَقِيَ"
-let testWord2 =  "يُحِبُّ"
-// let testWord3 ="نَابِهٍ"
-
-// let tWord0 = "bqiy"
-// let tWord1 = "baq~ayo"
-// let tWord2 = "baq~ay~a"
-// let tWord3 = "baqiya"
-
-// let tWord0 = "yuHib~u"
-// let tWord1 = "yaHib~"
-// let tWord2 = "yaHob"
-// let tWord3 = "yuHib~"
-
-// console.log(transliterate(testWord1));
-// console.log(transliterate(testWord2));
-// console.log(transliterate(testWord3));
-// console.log(getLetters(tWord1));
-// console.log(matchWord(tWord0, tWord1));
-// console.log(matchWord(tWord0, tWord2));
-// console.log(matchWord(tWord0, tWord3));
-// console.log(translateWordIfArabic(testWord3));
-
 function removePunctuation(word) {
     const ar_punc = '\u060C\u060D\u060E\u060F\u061B\u061E\u061F'
     const en_punc = '»«:;.!\'"-_`~\\s\\[\\]\\{\\}\\^\\$\\*\\+'
@@ -398,8 +398,20 @@ function removePunctuation(word) {
     return word.replace(re,'')
 }
 
+function stripNonArabic(word) {
+    const ar_chars = Object.keys(uni2buck).join('')
+    const re = new RegExp(`^[^${ar_chars}]*|[^${ar_chars}]*$`, 'g')
+    return word.replace(re, '')
+}
+
+function stripHarakat(buckWord) {
+    const har_chars = harakat.join('')
+    const re = new RegExp(`^[${har_chars}]*|[${har_chars}]*$`)
+    return buckWord.replace(re, '')
+}
+
 function translateWordIfArabic(word) {
-    word = removePunctuation(word)
+    word = stripNonArabic(word)
     const arabic = new RegExp(Object.keys(uni2buck).join('|'), 'g')
     if (!arabic.test(word)) {
         return null
@@ -407,13 +419,16 @@ function translateWordIfArabic(word) {
     return translateRawWord(word)
 }
 
-let testWords = ["الغاز", "haha", "الاز",'\nأسواق\n', 'أس\nواق']
+// let testWords = ["الغاز", "haha", "الاز",'\nأسواق\n', 'أس\nواق']
+//
+// for (const word of testWords) {
+//     translateWordIfArabic(word)
+// }
 
-for (const word of testWords) {
-    translateWordIfArabic(word)
-}
 
 async function translateSentence(s) {
+    s = preprocessInputSentence(s)
+
     let apiroot = "https://translate.googleapis.com/translate_a/single?"
     let params = {
         client: "gtx",
@@ -430,7 +445,54 @@ async function translateSentence(s) {
     if (response.status != 200)
         return null
     let body = await response.json();
-    return body["sentences"][0]["trans"];
+
+    let slist = body["sentences"].map(s => s["trans"])
+    let transSentence = processTransSentence(slist)
+
+    return transSentence;
+}
+
+function preprocessInputSentence(s) {
+    s = s.replace(/\s+/g,' ')
+
+    if (s.slice(-1) == "؟")
+        return s
+
+    let ar_comma = ["،", ","]
+    // let ar_conjunctions = ["و", "ف", "ثم","حتّى", "أو", "لكن", "بل", "أم"]
+    let ar_conjunctions = ["و"]
+    function replacer(match, offset, string) {
+        let nextWord = string.slice(offset+1).match(/\S+/)[0]
+        nextWord = detransliterate(removeHarakat(transliterate(nextWord)))
+        let startsWithCon = (new RegExp(`^${ar_conjunctions.join("|")}`)).test(nextWord)
+        if (startsWithCon) {
+            return match + "\n"
+        } else {
+            return match
+        }
+    }
+    s = s.replace(new RegExp(ar_comma.join("|"), 'g'), replacer)
+
+    return s
+}
+
+function processTransSentence(slist) {
+    let transSentence = ""
+    for (let i = 0; i < slist.length; i++) {
+        slist[i] = slist[i].replace(/\s+$/, " ")
+        if (i == 0) {
+            slist[i] = slist[i].charAt(0).toUpperCase() + slist[i].slice(1)
+        } else {
+            if (slist[i-1].slice(-2, -1) == ".") {
+                slist[i] = slist[i].charAt(0).toUpperCase() + slist[i].slice(1)
+            } else {
+                slist[i] = slist[i].charAt(0).toLowerCase() + slist[i].slice(1)
+            }
+        }
+
+        transSentence += slist[i]
+    }
+    return transSentence
 }
 
 export {translateWordIfArabic, loadDictData, isArabicChar, translateSentence}

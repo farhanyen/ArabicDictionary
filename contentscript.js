@@ -291,10 +291,14 @@ async function translateCurrentSentence() {
     if (wordRange == null)
         return;
     selectCurrentSentence();
-    let transSentence = await translator.translateSentence(wordRange.toString());
+    let inputSentence = wordRange.toString()
+    let transSentence = await translator.translateSentence(inputSentence);
+    console.log(transSentence)
     tooltipManager.setSentenceTransPopup(transSentence);
     sentence = true;
 }
+
+
 
 function selectCurrentSentence() {
     let r = wordRange;
@@ -303,10 +307,12 @@ function selectCurrentSentence() {
     let i = r.startOffset;
     let j = r.endOffset;
 
-    while (j < s.length && s[j - 1] != '.')
-        j++;
-    while ((i - 1) >= 0 && s[(i - 1)] != '.')
+    let endPunc = [".", "!", "؟"]
+
+    while ((i - 1) >= 0 && !endPunc.includes(s[i-1]))
         i--;
+    while (j < s.length && !endPunc.includes(s[j-1]))
+        j++;
 
     r.setStart(t, i);
     r.setEnd(t, j);

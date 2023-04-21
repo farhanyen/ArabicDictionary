@@ -24,8 +24,8 @@
 }
 
 .tooltip-table td, th {
-    line-height: 20px;
-    vertical-align: top;
+    /*line-height: 20px;*/
+    /*vertical-align: top;*/
     padding: 7px;
     font-weight: normal;
 }

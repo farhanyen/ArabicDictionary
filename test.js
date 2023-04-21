@@ -1,4 +1,3 @@
 let a = "bear"
-let b = a
-a = "haha"
-console.log(b)
+
+console.log(a.slice(-1))
