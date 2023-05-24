@@ -13,10 +13,8 @@ async function initialize() {
     await translator.init()
     const toolTipFile = chrome.runtime.getURL('./tooltip.js');
     tooltipManager = await import(toolTipFile)
-    // document.addEventListener("mouseover", onMouseOverSpan)
-    // document.addEventListener("mouseout", onMouseOutSpan)
+
     document.addEventListener("mouseover", onMouseOver)
-    // document.addEventListener("mouseout", onMouseOutSpan)
     document.addEventListener("mousemove", onMouseMove)
 
     chrome.runtime.onMessage.addListener(msg => {
@@ -26,113 +24,9 @@ async function initialize() {
         }
     });
 
-    // let link = document.createElement("link");
-    // link.type = "text/css";
-    // link.rel = "stylesheet";
-    // link.href =  chrome.runtime.getURL("./selection.css");
-    // // document.head.appendChild(link);
 }
 
 initialize()
-
-
-let nextImmediate = false
-
-function onMouseOverSpan(e) {
-    if (!isEnabled) {
-        return
-    }
-
-    if (e.target.tagName == "IFRAfME" && !('listenersSet' in e.target.dataset)) {
-        e.target.contentWindow.document.addEventListener("mouseover", onMouseOverSpan)
-        e.target.contentWindow.document.addEventListener("mouseout", onMouseOutSpan)
-        e.target.dataset.listenersSet = 'true'
-    }
-
-    if (nextImmediate) {
-        onLongHover(e)
-    } else {
-        e.target.dataset.timeout = setTimeout(onLongHover, 500, e)
-    }
-}
-
-function onMouseOutSpan(e) {
-    if (!isEnabled) {
-        return
-    }
-
-    tooltipManager.hideToolTip()
-    e.target.style.background = '';
-
-    clearTimeout(e.target.dataset.timeout)
-    delete e.target.dataset.timeout
-}
-
-function onLongHover(e) {
-    if (e.target.dataset.hasOwnProperty('htmlCache')) {
-        return
-    }
-    // console.log("hovertarget:\n", e.target.innerHTML)
-
-    translateWordSpan(e);
-    // translateWordFromPoint(e.target, e.clientX, e.clientY);
-}
-
-function translateWordSpan(e) {
-    if (e.target.tagName == "IFRAME") {
-        return
-    }
-
-    const nlist = Array.from(e.target.childNodes)
-    const textNodes = nlist.filter(n =>
-        n.nodeType == Node.TEXT_NODE &&
-        n.nodeValue.replace(/\s/g, '').length);
-    if (textNodes.length == 0)
-        return
-    if (nlist.length > 1) {
-        cacheHTML(e.target)
-        nextImmediate = true
-        for (let textNode of textNodes) {
-            wrapNode.call(textNode, "span")
-        }
-        return
-    }
-
-    const el_html = e.target.innerHTML
-    const words = el_html.match(/\S+/g)
-    if (words == null)
-        return
-    if (words.length > 1) {
-        cacheHTML(e.target)
-        nextImmediate = true
-
-        e.target.innerHTML = el_html.replace(/\S+|\s+/g, "<span style='position:static'>$&</span>")
-        return
-    }
-
-    translateWord(e.target)
-    nextImmediate = false
-}
-
-
-function cacheHTML(el) {
-    return;
-    cachedElement = el
-    el.dataset.htmlCache = el.innerHTML
-
-    function restoreCache(elem) {
-        elem.innerHTML = elem.dataset.htmlCache
-        delete elem.dataset.htmlCache
-        elem.removeEventListener("mouseleave", onMouseLeave)
-    }
-
-    function onMouseLeave(e) {
-        console.assert(e.target.dataset.hasOwnProperty('htmlCache'))
-        restoreCache(e.target)
-    }
-
-    el.addEventListener("mouseleave", onMouseLeave)
-}
 
 function translateWord(el) {
     const hit_word = el.textContent
@@ -145,18 +39,6 @@ function translateWord(el) {
     }
 }
 
-function wrapNode(elemName) {
-    const p = this.parentNode
-    const elem = document.createElement(elemName)
-    p.insertBefore(elem, this)
-    elem.appendChild(this)
-}
-
-function unwrapNode() {
-    const p = this.parentNode
-    const gp = p.parentNode
-    gp.replaceChild(p, this)
-}
 
 let mouseStillTimeout, wordRange
 
@@ -263,90 +145,6 @@ function expandCharRangeToWord(r) {
     r.setEnd(t, j);
 }
 
-// document.addEventListener("keydowm", onKeyDown);
-document.addEventListener("keyup", onKeyUp);
-
-
-// function onKeyDown(e) {
-//     if (e.key == 's' && !e.repeat)
-//         translateCurrentSentence();
-// }
-let sentence = false;
-
-function onKeyUp(e) {
-    if (e.key == "s") {
-        if (sentence) {
-            sentence = false;
-            unSelectWord();
-            tooltipManager.hideToolTip();
-        } else {
-            translateCurrentSentence();
-        }
-    } else if (e.key == "v") {
-        voiceCurrentSelection();
-    }
-}
-
-async function translateCurrentSentence() {
-    if (wordRange == null)
-        return;
-    selectCurrentSentence();
-    let inputSentence = wordRange.toString()
-    let transSentence = await translator.translateSentence(inputSentence);
-    console.log(transSentence)
-    tooltipManager.setSentenceTransPopup(transSentence);
-    sentence = true;
-}
-
-
-
-function selectCurrentSentence() {
-    let r = wordRange;
-    let t = r.startContainer;
-    let s = t.nodeValue
-    let i = r.startOffset;
-    let j = r.endOffset;
-
-    let endPunc = [".", "!", "؟"]
-
-    while ((i - 1) >= 0 && !endPunc.includes(s[i-1]))
-        i--;
-    while (j < s.length && !endPunc.includes(s[j-1]))
-        j++;
-
-    r.setStart(t, i);
-    r.setEnd(t, j);
-}
-
-async function voiceCurrentSelection() {
-    console.log("v fired");
-    if (wordRange == null)
-        return;
-    const apiroot = "https://translate.googleapis.com/translate_tts?";
-    let params = {
-        client: "gtx",
-        ie: ":UTF-8",
-        tl: "ar",
-        tk: "435555.435555",
-        q: wordRange.toString()
-    };
-    const paramStr = new URLSearchParams(params);
-    const url = apiroot + paramStr;
-
-    const response = await fetch(url, {method: "GET"});
-    if (response.status != 200)
-        return null;
-
-    const ctx = new AudioContext();
-    let audioBuf = await response.arrayBuffer();
-    let audio = await ctx.decodeAudioData(audioBuf);
-
-    const playSound = ctx.createBufferSource();
-    playSound.buffer = audio;
-    playSound.connect(ctx.destination);
-    playSound.start(ctx.currentTime);
-}
-
 function translateWordFromPoint(el, x, y) {
     let t = getTextNodeFromPoint(el, x, y);
     if (t == null)
@@ -423,4 +221,79 @@ function translateWordFromPoint(el, x, y) {
         selectWord(r);
         tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
     }
+}
+
+let sentence = false;
+
+document.addEventListener("keyup", onKeyUp);
+function onKeyUp(e) {
+    if (e.key == "s") {
+        if (sentence) {
+            sentence = false;
+            unSelectWord();
+            tooltipManager.hideToolTip();
+        } else {
+            translateCurrentSentence();
+        }
+    } else if (e.key == "v") {
+        voiceCurrentSelection();
+    }
+}
+
+async function translateCurrentSentence() {
+    if (wordRange == null)
+        return;
+    selectCurrentSentence();
+    let inputSentence = wordRange.toString()
+    let transSentence = await translator.translateSentence(inputSentence);
+    console.log(transSentence)
+    tooltipManager.setSentenceTransPopup(transSentence);
+    sentence = true;
+}
+
+function selectCurrentSentence() {
+    let r = wordRange;
+    let t = r.startContainer;
+    let s = t.nodeValue
+    let i = r.startOffset;
+    let j = r.endOffset;
+
+    let endPunc = [".", "!", "؟"]
+
+    while ((i - 1) >= 0 && !endPunc.includes(s[i-1]))
+        i--;
+    while (j < s.length && !endPunc.includes(s[j-1]))
+        j++;
+
+    r.setStart(t, i);
+    r.setEnd(t, j);
+}
+
+async function voiceCurrentSelection() {
+    console.log("v fired");
+    if (wordRange == null)
+        return;
+    const apiroot = "https://translate.googleapis.com/translate_tts?";
+    let params = {
+        client: "gtx",
+        ie: ":UTF-8",
+        tl: "ar",
+        tk: "435555.435555",
+        q: wordRange.toString()
+    };
+    const paramStr = new URLSearchParams(params);
+    const url = apiroot + paramStr;
+
+    const response = await fetch(url, {method: "GET"});
+    if (response.status != 200)
+        return null;
+
+    const ctx = new AudioContext();
+    let audioBuf = await response.arrayBuffer();
+    let audio = await ctx.decodeAudioData(audioBuf);
+
+    const playSound = ctx.createBufferSource();
+    playSound.buffer = audio;
+    playSound.connect(ctx.destination);
+    playSound.start(ctx.currentTime);
 }
