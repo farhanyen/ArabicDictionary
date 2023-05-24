@@ -6,9 +6,16 @@ beforeAll(() => {
     translator = new Translator()
     return translator.init()
 })
+
+describe('transliterate', () => {
+    it("نَحْوَها", () => {
+        const result = translator.transliterate("نَحْوَها")
+        expect(result).toEqual("naHowahA")
+    })
+})
 describe('translateWordIfArabic', () => {
 
-    it("رَبُّه", async () => {
+    it("رَبُّه", () => {
         const result = translator.translateWordIfArabic("رَبُّه")
         expect(result).toEqual([
             {word: 'رَبّه', def: 'lord;master [its/his]', root: 'رب' },
@@ -16,7 +23,7 @@ describe('translateWordIfArabic', () => {
         ])
     });
 
-    it("رَبُّه2", async () => {
+    it("رَبُّه2", () => {
         const result = translator.translateWordIfArabic("رَبُّه2")
         expect(result).toEqual([
             {word: 'رَبّه', def: 'lord;master [its/his]', root: 'رب' },
@@ -24,7 +31,7 @@ describe('translateWordIfArabic', () => {
         ])
     });
 
-    it("رَ2بُّه", async () => {
+    it("رَ2بُّه", () => {
         const result = translator.translateWordIfArabic("ر2َبُّه")
         expect(result).toBeNull()
     });

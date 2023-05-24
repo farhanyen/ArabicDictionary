@@ -332,26 +332,6 @@ Translator.prototype.compareLetters = function(l1, l2) {
 }
 
 
-// let tWord1 = "رَبُّهُ"
-// let tWord2 = "رَبُّهُۥ"
-//
-// console.log(this.transliterate(tWord1))
-// console.log(this.translateWordIfArabic(tWord1))
-//
-// console.log(this.transliterate(tWord2))
-// console.log(this.translateWordIfArabic(tWord2))
-
-// let tWord3 = "نَحْوَها"
-// console.log(this.transliterate(tWord3))
-// console.log(this.translateWordIfArabic(tWord3))
-
-
-// let tWord4 = "ْتَجِد"
-// console.log(this.transliterate(tWord4))
-// // console.log(this.translateWordIfArabic(tWord4))
-// console.log(this.stripHarakat(this.transliterate(this.stripNonArabic(tWord4))))
-// console.log(this.translateWordIfArabic(tWord4))
-
 const exceptions = [
     "|nA'}",
     "bay~umiy~",
