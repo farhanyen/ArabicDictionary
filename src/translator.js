@@ -1,45 +1,39 @@
 
-function printFilePath(path) {
-    //console.log("get translation from: ", path)
+function printFilefp(fp) {
+    //console.log("get translation from: ", fp)
 }
 
-async function readLocalFile(path) {
-    const fs = (await import('fs')).promises
-    try {
-        const data = await fs.readFile(path, { encoding: 'utf8' })
-        return data
-    } catch (err){
-        console.log(err)
-    }
+async function readLocalFile(fp) {
+    const fs = await import('fs')
+    const path = await import('path')
+    const {fileURLToPath} = await import('url')
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const data = await fs.promises.readFile(path.resolve(__dirname, fp), { encoding: 'utf8' })
+    return data
 }
 
-async function readExtensionFile(path) {
-    const url = chrome.runtime.getURL(path)
+async function readExtensionFile(fp) {
+    const url = chrome.runtime.getURL(fp)
     const response = await fetch(url)
     const text = await response.text()
     return text
 }
 
-async function readFile(path) {
+async function readFile(fp) {
     if (typeof window === 'undefined') {
-        return readLocalFile(path)
+        return readLocalFile(fp)
     } else {
-        return readExtensionFile(path)
+        return readExtensionFile(fp)
     }
 }
 
-// const ab = await readFile("./data/this.tableab")
-// const this.dictPref = await readFile("./data/this.dictprefixes")
-// const this.dictStem = await readFile("./data/this.dictstems")
-// console.log(this.dictPref)
-// console.log(this.dictStem)
-
-function MorphTable(path) {
-    this.path = path
+function MorphTable(fp) {
+    this.filePath = fp
 }
 
 MorphTable.prototype.init = async function() {
-    const text = await readFile(this.path)
+    const text = await readFile(this.filePath)
     const lines = text.split("\n")
     for (let line of lines) {
         if (line.startsWith(";")) {
@@ -70,12 +64,12 @@ MorphTable.prototype.addEntry = function(key, value) {
     this[key].push(value)
 }
 
-function Dict(path) {
-    this.path = path
+function Dict(fp) {
+    this.filePath = fp
 }
 
 Dict.prototype.init = async function() {
-    const text = await readFile(this.path)
+    const text = await readFile(this.filePath)
     const lines = text.split("\n")
     let root
     for (let line of lines) {
@@ -352,7 +346,7 @@ Translator.prototype.compareLetters = function(l1, l2) {
 // console.log(this.translateWordIfArabic(tWord3))
 
 
-// let tWord4 = " ْتَجِد"
+// let tWord4 = "ْتَجِد"
 // console.log(this.transliterate(tWord4))
 // // console.log(this.translateWordIfArabic(tWord4))
 // console.log(this.stripHarakat(this.transliterate(this.stripNonArabic(tWord4))))
@@ -373,7 +367,7 @@ const exceptions = [
 
 // import assert from 'assert';
 // for (const key in this.dictStem) {
-//     if (key == "path" || typeof this.dictStem[key] === 'function')
+//     if (key == "fp" || typeof this.dictStem[key] === 'function')
 //         continue;
 //
 //     for (const stemEntry of this.dictStem[key]) {
@@ -412,8 +406,8 @@ Translator.prototype.stripHarakat = function(buckWord) {
 
 Translator.prototype.translateWordIfArabic = function(word) {
     word = this.stripNonArabic(word)
-    const arabic = new RegExp(Object.keys(uni2buck).join('|'), 'g')
-    if (!arabic.test(word)) {
+    let isArabic = word.split('').every(c => Object.keys(uni2buck).includes(c))
+    if (!isArabic) {
         return null
     }
     return this.translateRawWord(word)

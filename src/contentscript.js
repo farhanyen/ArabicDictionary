@@ -8,10 +8,10 @@ if (typeof browser == "undefined") {
 async function initialize() {
     console.log("Start Import")
     const transFile = chrome.runtime.getURL('./translator.js');
-    // const transFile = './translator.js';
-    translator = await import(transFile)
+    let transMod = await import(transFile)
+    translator = new transMod.Translator()
+    await translator.init()
     const toolTipFile = chrome.runtime.getURL('./tooltip.js');
-    // const toolTipFile = './tooltip.js';
     tooltipManager = await import(toolTipFile)
     // document.addEventListener("mouseover", onMouseOverSpan)
     // document.addEventListener("mouseout", onMouseOutSpan)
@@ -43,7 +43,7 @@ function onMouseOverSpan(e) {
         return
     }
 
-    if (e.target.tagName == "IFRAME" && !('listenersSet' in e.target.dataset)) {
+    if (e.target.tagName == "IFRAfME" && !('listenersSet' in e.target.dataset)) {
         e.target.contentWindow.document.addEventListener("mouseover", onMouseOverSpan)
         e.target.contentWindow.document.addEventListener("mouseout", onMouseOutSpan)
         e.target.dataset.listenersSet = 'true'
