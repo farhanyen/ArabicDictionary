@@ -1,14 +1,16 @@
 
-function printFilefp(fp) {
+function printFilePath(fp) {
     //console.log("get translation from: ", fp)
 }
 
 async function readLocalFile(fp) {
     const fs = await import('fs')
+    
     const path = await import('path')
     const {fileURLToPath} = await import('url')
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
+    
     const data = await fs.promises.readFile(path.resolve(__dirname, fp), { encoding: 'utf8' })
     return data
 }
@@ -85,7 +87,7 @@ Dict.prototype.init = async function() {
         const fields = line.split("\t")
         const key = fields[0]
         const entry = {
-            diacritics: fields[1],
+            harakat: fields[1],
             morph: fields[2],
             def: fields[3].split(/\[|</)[0].trim(),
             root: root
@@ -109,6 +111,11 @@ function Translator() {
 }
 
 Translator.prototype.init = async function() {
+    this.initBuck()
+    await this.loadDictData()
+}
+
+Translator.prototype.loadDictData = async function() {
     this.tableab = new MorphTable("./data/tableab")
     this.tableac = new MorphTable("./data/tableac")
     this.tablebc = new MorphTable("./data/tablebc")
@@ -119,26 +126,107 @@ Translator.prototype.init = async function() {
     await Promise.all([this.tableab.init(), this.tablebc.init(), this.tableac.init(), this.dictPref.init(), this.dictStem.init(), this.dictSuff.init()])
 }
 
+Translator.prototype.initBuck = function() {
+    this.buck2uni = {
+        "'": "\u0621",
+        "|": "\u0622",
+        ">": "\u0623",
+        "&": "\u0624",
+        "<": "\u0625",
+        "}": "\u0626",
+        "A": "\u0627",
+        "b": "\u0628",
+        "p": "\u0629",
+        "t": "\u062A",
+        "v": "\u062B",
+        "j": "\u062C",
+        "H": "\u062D",
+        "x": "\u062E",
+        "d": "\u062F",
+        "*": "\u0630",
+        "r": "\u0631",
+        "z": "\u0632",
+        "s": "\u0633",
+        "$": "\u0634",
+        "S": "\u0635",
+        "D": "\u0636",
+        "T": "\u0637",
+        "Z": "\u0638",
+        "E": "\u0639",
+        "g": "\u063A",
+        "_": "\u0640",
+        "f": "\u0641",
+        "q": "\u0642",
+        "k": "\u0643",
+        "l": "\u0644",
+        "m": "\u0645",
+        "n": "\u0646",
+        "h": "\u0647",
+        "w": "\u0648",
+        "Y": "\u0649",
+        "y": "\u064A",
+        "F": "\u064B",
+        "N": "\u064C",
+        "K": "\u064D",
+        "a": "\u064E",
+        "u": "\u064F",
+        "i": "\u0650",
+        "~": "\u0651",
+        "o": "\u0652",
+        "`": "\u0670",
+        "{": "\u0671",
+        "P": "\u067E",
+        "J": "\u0686",
+        "V": "\u06A4",
+        "G": "\u06AF"
+    }
+    this.uni2buck = {}
+    for (const key in this.buck2uni) {
+        this.uni2buck[this.buck2uni[key]] = key
+    }
 
-Translator.prototype.translateWord = function(word) {
+    this.harakat = ['F','N','K','a','u','i','~','o','`']
+
+    this.stripMods = {
+        '|': 'A',
+        '>': 'A',
+        '<': 'A',
+        '{': 'A',
+        '&': 'w',
+        'Y': 'y',
+        'p': 'h'
+    }
+}
+
+Translator.prototype.translateUniWord = function(uniWord) {
+    let buckWord = this.transliterate(uniWord)
+    let transList = this.getTransList(this.removeHarakat(buckWord))
+
+    transList = this.removeConflictingTrans(transList, buckWord)
+
+    this.detransliterateTransList(transList)
+    return transList
+}
+
+Translator.prototype.getTransList = function(buckWord) {
     const transList = []
-    for (let i = 0; i <= word.length; i++) {
-        for (let j = i; j <= word.length; j++) {
-            let pref = word.slice(0, i)
-            let stem = word.slice(i, j)
-            let suff = word.slice(j, word.length)
+    for (let i = 0; i <= buckWord.length; i++) {
+        for (let j = i; j <= buckWord.length; j++) {
+            let pref = buckWord.slice(0, i)
+            let stem = buckWord.slice(i, j)
+            let suff = buckWord.slice(j, buckWord.length)
 
             if (!this.dictPref.contains(pref) || !this.dictStem.contains(stem) || !this.dictSuff.contains(suff))
                 continue
 
-            const componentTransList = this.translateComponents(pref, stem, suff)
-            transList.push(...componentTransList)
+            const segTransList = this.segmentsTransList(pref, stem, suff)
+            transList.push(...segTransList)
         }
     }
     return transList
 }
 
-Translator.prototype.translateComponents = function(pref, stem, suff) {
+Translator.prototype.segmentsTransList = function(pref, stem, suff) {
     const transList = []
     for (const prefEntry of this.dictPref[pref]) {
         for (const stemEntry of this.dictStem[stem]) {
@@ -147,7 +235,7 @@ Translator.prototype.translateComponents = function(pref, stem, suff) {
                     continue
 
                 const trans = {
-                    word: prefEntry.diacritics+stemEntry.diacritics+suffEntry.diacritics,
+                    word: prefEntry.harakat+stemEntry.harakat+suffEntry.harakat,
                     def: (prefEntry.def ? `[${prefEntry.def}] `:"") + stemEntry.def + (suffEntry.def ? ` [${suffEntry.def}]`:""),
                     root: stemEntry.root
                 }
@@ -157,6 +245,7 @@ Translator.prototype.translateComponents = function(pref, stem, suff) {
     }
     return transList
 }
+
 Translator.prototype.checkMorph = function(prefEntry, stemEntry, suffEntry) {
     const a = prefEntry.morph
     const b = stemEntry.morph
@@ -165,90 +254,17 @@ Translator.prototype.checkMorph = function(prefEntry, stemEntry, suffEntry) {
     return (this.tableab[a].includes(b) && this.tablebc[b].includes(c) && this.tableac[a].includes(c))
 }
 
-const harakat = ['F','N','K','a','u','i','~','o','`']
-
-Translator.prototype.removeHarakat = function(word) {
-    return word.replace(new RegExp(harakat.join('|'), 'g'), '')
-}
-
-Translator.prototype.buckStrip = function(buckWord) {
-    buckWord = this.removeLetterMods(buckWord)
-    return this.removeHarakat(buckWord)
-}
-
-
-// this.translateWord("wAlgAz")
-// this.translateWord(this.removeHarakat('wa>alogAz'))
-
-let buck2uni = {
-    "'": "\u0621",
-    "|": "\u0622",
-    ">": "\u0623",
-    "&": "\u0624",
-    "<": "\u0625",
-    "}": "\u0626",
-    "A": "\u0627",
-    "b": "\u0628",
-    "p": "\u0629",
-    "t": "\u062A",
-    "v": "\u062B",
-    "j": "\u062C",
-    "H": "\u062D",
-    "x": "\u062E",
-    "d": "\u062F",
-    "*": "\u0630",
-    "r": "\u0631",
-    "z": "\u0632",
-    "s": "\u0633",
-    "$": "\u0634",
-    "S": "\u0635",
-    "D": "\u0636",
-    "T": "\u0637",
-    "Z": "\u0638",
-    "E": "\u0639",
-    "g": "\u063A",
-    "_": "\u0640",
-    "f": "\u0641",
-    "q": "\u0642",
-    "k": "\u0643",
-    "l": "\u0644",
-    "m": "\u0645",
-    "n": "\u0646",
-    "h": "\u0647",
-    "w": "\u0648",
-    "Y": "\u0649",
-    "y": "\u064A",
-    "F": "\u064B",
-    "N": "\u064C",
-    "K": "\u064D",
-    "a": "\u064E",
-    "u": "\u064F",
-    "i": "\u0650",
-    "~": "\u0651",
-    "o": "\u0652",
-    "`": "\u0670",
-    "{": "\u0671",
-    "P": "\u067E",
-    "J": "\u0686",
-    "V": "\u06A4",
-    "G": "\u06AF"
-}
-let uni2buck = {}
-for (const key in buck2uni) {
-    uni2buck[buck2uni[key]] = key
-}
-
-Translator.prototype.isArabicChar = function(c) {
-    return c in uni2buck;
+Translator.prototype.removeHarakat = function(buckWord) {
+    return buckWord.replace(new RegExp(this.harakat.join('|'), 'g'), '')
 }
 
 Translator.prototype.transliterate = function(uniWord) {
-    return uniWord.replace(new RegExp(Object.keys(uni2buck).join('|'), 'g'), (c) => uni2buck[c])
+    return uniWord.replace(new RegExp(Object.keys(this.uni2buck).join('|'), 'g'), (c) => this.uni2buck[c])
 }
 
-Translator.prototype.detransliterate = function(word) {
-    const buck = Object.keys(buck2uni).map(s => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'))
-    return word.replace(new RegExp(buck.join('|'), 'g'), (c) => buck2uni[c])
+Translator.prototype.detransliterate = function(buckWord) {
+    const buck = Object.keys(this.buck2uni).map(s => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'))
+    return buckWord.replace(new RegExp(buck.join('|'), 'g'), (c) => this.buck2uni[c])
 }
 
 Translator.prototype.detransliterateTransList = function(transList) {
@@ -258,17 +274,8 @@ Translator.prototype.detransliterateTransList = function(transList) {
     }
 }
 
-Translator.prototype.translateRawWord = function(uniWord) {
-    let buckWord = this.transliterate(uniWord)
-    buckWord = this.stripHarakat(buckWord)
-    let transList = this.translateWord(this.removeHarakat(buckWord))
-    // console.log(transList)
-    transList = this.removeConflictingTrans(transList, buckWord)
-    this.detransliterateTransList(transList)
-    return transList
-}
-
-Translator.prototype.removeConflictingTrans = function(transList, litWord) {
+Translator.prototype.removeConflictingTrans = function(transList, buckWord) {
+    let litWord = this.stripHarakat(buckWord)
     let newList = [];
     for (let trans of transList) {
         if (this.matchWord(trans.word, litWord))
@@ -295,18 +302,9 @@ Translator.prototype.matchWord = function(w1, w2) {
     return true;
 }
 
-let stripMods = {
-    '|':'A',
-    '>': 'A',
-    '<': 'A',
-    '{': 'A',
-    '&': 'w',
-    'Y': 'y',
-    'p': 'h'
-}
 Translator.prototype.removeLetterMods = function(buckWord) {
     function replacer(match, p1, offset, string) {
-        return stripMods[p1];
+        return this.stripMods[p1];
     }
     return buckWord.replace(/(\||>|<|\{|&|Y|p)/g, replacer)
 }
@@ -316,7 +314,7 @@ Translator.prototype.getLetters = function(w) {
     let letters = [];
     while (i < w.length) {
         s = i; i++;
-        while (harakat.includes(w[i])) {
+        while (this.harakat.includes(w[i])) {
             i++;
         }
         letters.push(w.slice(s, i));
@@ -329,6 +327,15 @@ Translator.prototype.compareLetters = function(l1, l2) {
     let sub2 = l2.split('').every(c => l1.includes(c))
 
     return sub1 || sub2;
+}
+
+Translator.prototype.buckStrip = function(buckWord) {
+    buckWord = this.removeLetterMods(buckWord)
+    return this.removeHarakat(buckWord)
+}
+
+Translator.prototype.isArabicChar = function(c) {
+    return c in this.uni2buck;
 }
 
 
@@ -351,54 +358,39 @@ const exceptions = [
 //         continue;
 //
 //     for (const stemEntry of this.dictStem[key]) {
-//         if (exceptions.includes(stemEntry.diacritics))
+//         if (exceptions.includes(stemEntry.harakat))
 //             continue;
-//         if(!(this.matchWord(key, stemEntry.diacritics))) {
-//             console.log(key, stemEntry.diacritics);
+//         if(!(this.matchWord(key, stemEntry.harakat))) {
+//             console.log(key, stemEntry.harakat);
 //             assert(1==0);
 //         }
-//         if (!(this.removeLetterMods(key) == this.buckStrip(stemEntry.diacritics))) {
-//             console.log(key, stemEntry.diacritics, this.removeLetterMods(key), this.buckStrip(stemEntry.diacritics));
+//         if (!(this.removeLetterMods(key) == this.buckStrip(stemEntry.harakat))) {
+//             console.log(key, stemEntry.harakat, this.removeLetterMods(key), this.buckStrip(stemEntry.harakat));
 //             assert(1==0);
 //         }
 //     }
 // }
 
-Translator.prototype.removePunctuation = function(word) {
-    const ar_punc = '\u060C\u060D\u060E\u060F\u061B\u061E\u061F'
-    const en_punc = '»«:;.!\'"-_`~\\s\\[\\]\\{\\}\\^\\$\\*\\+'
-    const punc = `${ar_punc}${en_punc}`
-    const re = new RegExp(`^[${punc}]*| |[${punc}]*$`, 'g')
-    return word.replace(re,'')
+Translator.prototype.translateWordIfArabic = function(uniWord) {
+    uniWord = this.stripNonArabic(uniWord)
+    let isArabic = uniWord.split('').every(c => Object.keys(this.uni2buck).includes(c))
+    if (!isArabic) {
+        return null
+    }
+    return this.translateUniWord(uniWord)
 }
 
 Translator.prototype.stripNonArabic = function(word) {
-    const ar_chars = Object.keys(uni2buck).join('')
+    const ar_chars = Object.keys(this.uni2buck).join('')
     const re = new RegExp(`^[^${ar_chars}]*|[^${ar_chars}]*$`, 'g')
     return word.replace(re, '')
 }
 
 Translator.prototype.stripHarakat = function(buckWord) {
-    const har_chars = harakat.join('')
-    const re = new RegExp(`^[${har_chars}]*|[${har_chars}]*$`)
+    const h_chars = this.harakat.join('')
+    const re = new RegExp(`^[${h_chars}]*|[${h_chars}]*$`)
     return buckWord.replace(re, '')
 }
-
-Translator.prototype.translateWordIfArabic = function(word) {
-    word = this.stripNonArabic(word)
-    let isArabic = word.split('').every(c => Object.keys(uni2buck).includes(c))
-    if (!isArabic) {
-        return null
-    }
-    return this.translateRawWord(word)
-}
-
-// let testWords = ["الغاز", "haha", "الاز",'\nأسواق\n', 'أس\nواق']
-//
-// for (const word of testWords) {
-//     this.translateWordIfArabic(word)
-// }
-
 
 Translator.prototype.translateSentence = async function(s) {
     s = this._preprocessInputSentence(s)
