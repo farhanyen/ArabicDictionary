@@ -286,6 +286,12 @@ Translator.prototype.removeConflictingTrans = function(transList, buckWord) {
     return transList
 }
 
+Translator.prototype.stripHarakat = function(buckWord) {
+    const h_chars = this.harakat.join('')
+    const re = new RegExp(`^[${h_chars}]*|[${h_chars}]*$`)
+    return buckWord.replace(re, '')
+}
+
 Translator.prototype.matchWord = function(w1, w2) {
     w1 = this.removeLetterMods(w1), w2 = this.removeLetterMods(w2)
     let ls1 = this.getLetters(w1), ls2 = this.getLetters(w2);
@@ -386,12 +392,6 @@ Translator.prototype.stripNonArabic = function(word) {
     return word.replace(re, '')
 }
 
-Translator.prototype.stripHarakat = function(buckWord) {
-    const h_chars = this.harakat.join('')
-    const re = new RegExp(`^[${h_chars}]*|[${h_chars}]*$`)
-    return buckWord.replace(re, '')
-}
-
 Translator.prototype.translateSentence = async function(s) {
     s = this._preprocessInputSentence(s)
 
@@ -424,7 +424,7 @@ Translator.prototype._preprocessInputSentence = function(s) {
     if (s.slice(-1) == "؟")
         return s
 
-    let ar_comma = ["،", ","]
+    let ar_comma = ["،", ",","—"]
     // let ar_conjunctions = ["و", "ف", "ثم","حتّى", "أو", "لكن", "بل", "أم"]
     let ar_conjunctions = ["و"]
     function replacer(match, offset, string) {
