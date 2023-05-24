@@ -306,7 +306,7 @@ Translator.prototype.removeLetterMods = function(buckWord) {
     function replacer(match, p1, offset, string) {
         return this.stripMods[p1];
     }
-    return buckWord.replace(/(\||>|<|\{|&|Y|p)/g, replacer)
+    return buckWord.replace(/(\||>|<|\{|&|Y|p)/g, replacer.bind(this))
 }
 
 Translator.prototype.getLetters = function(w) {
