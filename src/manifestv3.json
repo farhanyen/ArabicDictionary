@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Arabic Dictionary",
+  "version": "2.0",
+  "background": {
+    "service_worker": "backgroundv3.js"
+  },
+  "content_security_policy": {
+    "extension_pages":"script-src 'self'; object-src 'self'"
+  },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "all_frames": true,
+    "js": ["contentscript.js"],
+    "css": ["tooltip.css", "selection.css"]
+  }],
+  "description": "Arabic Dictionary Extension",
+  "icons": {
+    "48": "img/icon48.png",
+    "128": "img/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["translator.js", "tooltip.js", "data/*", "selection.css"],
+      "matches": ["<all_urls>", "file://*/*"]
+    },
+    {
+      "resources": ["epub.js/*"],
+      "matches": ["file://*/*", "*://*/*"]
+    }
+  ],
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "declarativeNetRequestFeedback"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [{
+      "id": "ruleset_1",
+      "enabled": true,
+      "path": "rules_1.json"
+    }]
+  }
+}

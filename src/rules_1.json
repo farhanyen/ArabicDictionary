@@ -1,0 +1,30 @@
+[
+    {
+        "id": 1,
+        "priority": 1,
+        "action": {
+            "type": "redirect",
+            "redirect": {
+                "url": "https://developer.chrome.com/docs/extensions/mv3/intro/"
+            }
+        },
+        "condition": {
+            "urlFilter": "https://developer.chrome.com/docs/extensions/mv2/",
+            "resourceTypes": ["main_frame"]
+        }
+    },
+    {
+        "id": 2,
+        "priority": 1,
+        "action": {
+            "type": "redirect",
+            "redirect": {
+                "extensionPath": "/translator.js"
+            }
+        },
+        "condition": {
+            "urlFilter": "https://developer.chrome.com/docs/extensions/whatsnew/",
+            "resourceTypes": ["main_frame"]
+        }
+    }
+]

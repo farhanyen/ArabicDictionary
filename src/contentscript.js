@@ -23,21 +23,9 @@ async function initialize() {
             isEnabled = !isEnabled
         }
     });
-
 }
 
 initialize()
-
-function translateWord(el) {
-    const hit_word = el.textContent
-    // console.log("Hit Word:", hit_word)
-    const transList = translator.translateWordIfArabic(hit_word)
-    //console.log(transList)
-    if (transList != null) {
-        el.style.background = 'yellow';
-        tooltipManager.displayToolTip(el, el.getBoundingClientRect(), transList)
-    }
-}
 
 
 let mouseStillTimeout, wordRange
@@ -145,7 +133,7 @@ function expandCharRangeToWord(r) {
     r.setEnd(t, j);
 }
 
-function translateWordFromPoint(el, x, y) {
+async function translateWordFromPoint(el, x, y) {
     let t = getTextNodeFromPoint(el, x, y);
     if (t == null)
         return;
@@ -154,73 +142,72 @@ function translateWordFromPoint(el, x, y) {
     if (r == null)
         return;
 
-    // let t = r.startContainer;
     let s = t.nodeValue;
     let i = r.startOffset;
     let j = r.endOffset;
 
     if (!translator.isArabicChar(s[i]))
         return;
+
     while (j < s.length && translator.isArabicChar(s[j]))
         j++;
-    while ((i - 1) >= 0 && translator.isArabicChar(s[(i - 1)]))
+    while (i > 0 && translator.isArabicChar(s[(i - 1)]))
         i--;
 
     r.setStart(t, i);
     r.setEnd(t, j);
     let transList = translator.translateWordIfArabic(r.toString());
-    if (transList != null && transList.length > 0) {
+    if (transList == null)
+        return
+    if (transList.length > 0) {
         selectWord(r);
         tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
         return;
     }
 
-    let orTransList = transList;
-    let ori = i, orj = j;
-    if (j < s.length && s[j] == ' ')
-        j++;
-    if ((i - 1) >= 0 && s[(i - 1)] == ' ')
-        i--;
 
-    while (j < s.length && translator.isArabicChar(s[j]))
-        j++;
-    while ((i - 1) >= 0 && translator.isArabicChar(s[(i - 1)]))
-        i--;
+    // if arabic word typeset wrongly and has space inside
+    // let ori = i, orj = j;
+    // if (j < s.length && s[j] == ' ')
+    //     j++;
+    // if (i > 0 && s[(i - 1)] == ' ')
+    //     i--;
+    //
+    // while (j < s.length && translator.isArabicChar(s[j]))
+    //     j++;
+    // while (i > 0 && translator.isArabicChar(s[(i - 1)]))
+    //     i--;
+    //
+    // r.setStart(t, ori);
+    // r.setEnd(t, j);
+    // transList = translator.translateWordIfArabic(r.toString());
+    // if (transList != null && transList.length > 0) {
+    //     selectWord(r);
+    //     tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+    //     return;
+    // }
+    //
+    // r.setStart(t, i);
+    // r.setEnd(t, orj);
+    // transList = translator.translateWordIfArabic(r.toString());
+    // if (transList != null && transList.length > 0) {
+    //     selectWord(r);
+    //     tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+    //     return;
+    // }
+    //
+    // r.setStart(t, i);
+    // r.setEnd(t, j);
+    // transList = translator.translateWordIfArabic(r.toString());
+    // if (transList != null && transList.length > 0) {
+    //     selectWord(r);
+    //     tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+    //     return;
+    // }
 
-    r.setStart(t, ori);
-    r.setEnd(t, j);
-    transList = translator.translateWordIfArabic(r.toString());
-    if (transList != null && transList.length > 0) {
-        selectWord(r);
-        tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
-        return;
-    }
-
-    r.setStart(t, i);
-    r.setEnd(t, orj);
-    transList = translator.translateWordIfArabic(r.toString());
-    if (transList != null && transList.length > 0) {
-        selectWord(r);
-        tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
-        return;
-    }
-
-    r.setStart(t, i);
-    r.setEnd(t, j);
-    transList = translator.translateWordIfArabic(r.toString());
-    if (transList != null && transList.length > 0) {
-        selectWord(r);
-        tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
-        return;
-    }
-
-    r.setStart(t, ori);
-    r.setEnd(t, orj);
-    transList = orTransList;
-    if (transList != null) {
-        selectWord(r);
-        tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
-    }
+    selectWord(r);
+    tooltipManager.displayToolTip(el, r.getBoundingClientRect(), []);
+    return;
 }
 
 let sentence = false;

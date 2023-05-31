@@ -111,30 +111,31 @@ chrome.webRequest.onBeforeRequest.addListener(
 );
 
 
+
 // chrome.storage.sync.get('ison', function (items) {}
 
-function updateIcon() {
-  let isOn;
-  chrome.storage.sync.get('ison', function (items) {
-    if (!chrome.runtime.error) {
-      isOn = items.ison;
-      if (typeof isOn === 'undefined') {
-        isOn = true;
-      }
-      console.log(isOn);
-      if (isOn) {
-        chrome.browserAction.setIcon({ path: 'img/translation_off_16.png' });
-        chrome.storage.sync.set({
-          ison: false,
-        });
-      } else {
-        chrome.browserAction.setIcon({ path: 'img/translation_16.png' });
-        chrome.storage.sync.set({
-          ison: true,
-        });
-      }
-    }
-  });
-}
-
-chrome.browserAction.onClicked.addListener(updateIcon);
+// function updateIcon() {
+//   let isOn;
+//   chrome.storage.sync.get('ison', function (items) {
+//     if (!chrome.runtime.error) {
+//       isOn = items.ison;
+//       if (typeof isOn === 'undefined') {
+//         isOn = true;
+//       }
+//       console.log(isOn);
+//       if (isOn) {
+//         chrome.browserAction.setIcon({ path: 'img/translation_off_16.png' });
+//         chrome.storage.sync.set({
+//           ison: false,
+//         });
+//       } else {
+//         chrome.browserAction.setIcon({ path: 'img/translation_16.png' });
+//         chrome.storage.sync.set({
+//           ison: true,
+//         });
+//       }
+//     }
+//   });
+// }
+//
+// chrome.browserAction.onClicked.addListener(updateIcon);

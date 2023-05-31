@@ -45,6 +45,7 @@ function createTransPopupHTML(transList) {
 
 function setSentenceTransPopup(transSentence) {
     tooltip.innerHTML = createSentenceTransHTML(transSentence);
+    tooltip.style.visibility = "visible"
 }
 function createSentenceTransHTML(transSentence) {
     let str = ""

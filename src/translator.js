@@ -8,8 +8,8 @@ async function readLocalFile(fp) {
     
     const path = await import('path')
     const {fileURLToPath} = await import('url')
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
+    const __filename = fileURLToPath(import.meta.url)
+    const __dirname = path.dirname(__filename)
     
     const data = await fs.promises.readFile(path.resolve(__dirname, fp), { encoding: 'utf8' })
     return data
@@ -392,6 +392,33 @@ Translator.prototype.stripNonArabic = function(word) {
     return word.replace(re, '')
 }
 
+Translator.prototype.gTranslateWord = async function(s) {
+    let tlist = await this.gTranslateText(s)
+    return tlist[0]
+}
+
+Translator.prototype.gTranslateText = async function(s) {
+    let apiroot = "https://translate.googleapis.com/translate_a/single?"
+    let params = {
+        client: "gtx",
+        sl: "ar",
+        tl: "en",
+        dt: "t",
+        dj: "1",
+        tk: "435555.435555",
+        q: s
+    };
+    let paramStr = new URLSearchParams(params);
+    let url = apiroot + paramStr;
+    const response = await fetch(url, {method: "GET"});
+    if (response.status != 200)
+        return null
+    let body = await response.json();
+    let tlist = body["sentences"].map(s => s["trans"])
+
+    return tlist
+}
+
 Translator.prototype.translateSentence = async function(s) {
     s = this._preprocessInputSentence(s)
 
@@ -412,8 +439,8 @@ Translator.prototype.translateSentence = async function(s) {
         return null
     let body = await response.json();
 
-    let slist = body["sentences"].map(s => s["trans"])
-    let transSentence = this._processTransSentence(slist)
+    let tlist = body["sentences"].map(s => s["trans"])
+    let transSentence = this._processTransSentence(tlist)
 
     return transSentence;
 }
