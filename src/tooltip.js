@@ -14,6 +14,22 @@ function createToolTip() {
     document.body.appendChild(tooltip)
 }
 
+function displayTransListTooltip(el, selectRect, transList) {
+    tooltip.innerHTML = createTransPopupHTML(transList)
+
+    positionTooltip(el, selectRect)
+
+    tooltip.style.visibility = "visible"
+}
+
+function displayTextTooltip(el, selectRect, text) {
+    tooltip.innerHTML = createTextPopupHTML(text);
+    
+    positionTooltip(el, selectRect)
+    tooltip.style.visibility = "visible"
+}
+
+
 function createTransPopupHTML(transList) {
     let str = ""
     str += "<table class = 'tooltip-table'>"
@@ -43,31 +59,25 @@ function createTransPopupHTML(transList) {
     return str
 }
 
-function setSentenceTransPopup(transSentence) {
-    tooltip.innerHTML = createSentenceTransHTML(transSentence);
-    tooltip.style.visibility = "visible"
-}
-function createSentenceTransHTML(transSentence) {
+function createTextPopupHTML(text) {
     let str = ""
     str += "<table class = 'tooltip-table'>"
 
     str += "<tr>"
-    str += `<td>${transSentence}</td>`
+    str += `<td>${text}</td>`
     str += "</tr>"
 
     return str
 }
 
-function displayToolTip(el, wRect, transList) {
-    tooltip.innerHTML = createTransPopupHTML(transList)
-
-    positionTooltip(el, wRect)
-
-    tooltip.style.visibility = "visible"
+function setTextPopupHTML(text) {
+    tooltip.innerHTML = createTextPopupHTML(text)
 }
 
-function positionTooltip(el, wRect) {
-    let wordRect = JSON.parse(JSON.stringify(wRect))
+
+
+function positionTooltip(el, selectRect) {
+    let wordRect = JSON.parse(JSON.stringify(selectRect))
     
     let ancestorIFrame = el.ownerDocument.defaultView.frameElement
     if (ancestorIFrame) {
@@ -101,4 +111,4 @@ function hideToolTip() {
 
 createToolTip()
 
-export {displayToolTip, hideToolTip, setSentenceTransPopup}
+export {displayTransListTooltip, hideToolTip, displayTextTooltip, setTextPopupHTML}

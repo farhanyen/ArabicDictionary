@@ -70,9 +70,8 @@ function within(x, y, rect) {
 function selectWord(r) {
     wordRange = r
     const selection = wordRange.startContainer.ownerDocument.getSelection();
-    // if (selection.rangeCount == 1 && selection.getRangeAt(0).toString() == '') {
     selection.removeAllRanges();
-    // }
+
     wordRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", 'yellow');
     selection.addRange(wordRange);
 }
@@ -159,12 +158,15 @@ async function translateWordFromPoint(el, x, y) {
     let transList = translator.translateWordIfArabic(r.toString());
     if (transList == null)
         return
+
     if (transList.length > 0) {
         selectWord(r);
-        tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+        tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
         return;
     }
 
+    selectWord(r);
+    tooltipManager.displayTextTooltip(el, r.getBoundingClientRect(), "No Definition Found");
 
     // if arabic word typeset wrongly and has space inside
     // let ori = i, orj = j;
@@ -183,7 +185,7 @@ async function translateWordFromPoint(el, x, y) {
     // transList = translator.translateWordIfArabic(r.toString());
     // if (transList != null && transList.length > 0) {
     //     selectWord(r);
-    //     tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+    //     tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
     //     return;
     // }
     //
@@ -192,7 +194,7 @@ async function translateWordFromPoint(el, x, y) {
     // transList = translator.translateWordIfArabic(r.toString());
     // if (transList != null && transList.length > 0) {
     //     selectWord(r);
-    //     tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+    //     tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
     //     return;
     // }
     //
@@ -201,13 +203,10 @@ async function translateWordFromPoint(el, x, y) {
     // transList = translator.translateWordIfArabic(r.toString());
     // if (transList != null && transList.length > 0) {
     //     selectWord(r);
-    //     tooltipManager.displayToolTip(el, r.getBoundingClientRect(), transList);
+    //     tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
     //     return;
     // }
 
-    selectWord(r);
-    tooltipManager.displayToolTip(el, r.getBoundingClientRect(), []);
-    return;
 }
 
 let sentence = false;
@@ -234,7 +233,7 @@ async function translateCurrentSentence() {
     let inputSentence = wordRange.toString()
     let transSentence = await translator.translateSentence(inputSentence);
     console.log(transSentence)
-    tooltipManager.setSentenceTransPopup(transSentence);
+    tooltipManager.setTextPopupHTML(transSentence);
     sentence = true;
 }
 
