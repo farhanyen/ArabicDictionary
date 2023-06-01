@@ -25,6 +25,6 @@
   "permissions": [
     "webRequest",
     "webRequestBlocking",
-    "file:///*"
+    "<all_urls>"
   ]
 }

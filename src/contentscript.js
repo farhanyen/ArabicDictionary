@@ -28,7 +28,7 @@ async function initialize() {
 initialize()
 
 
-let mouseStillTimeout, wordRange
+let mouseStillTimeout, curRange
 
 function onMouseOver(e) {
     if (e.target.tagName == "IFRAME") {
@@ -45,12 +45,12 @@ function onMouseOver(e) {
 
 function onMouseMove(e) {
     let x = e.clientX, y = e.clientY;
-    if (wordRange) {
-        if (within(x, y, wordRange.getBoundingClientRect())) {
+    if (curRange) {
+        if (within(x, y, curRange.getBoundingClientRect())) {
             return;
         }
 
-        unSelectWord();
+        unselectRange();
         tooltipManager.hideToolTip();
     }
 
@@ -67,22 +67,22 @@ function within(x, y, rect) {
     return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
-function selectWord(r) {
-    wordRange = r
-    const selection = wordRange.startContainer.ownerDocument.getSelection();
+function selectRange(r) {
+    curRange = r
+    const selection = curRange.startContainer.ownerDocument.getSelection();
     selection.removeAllRanges();
 
-    wordRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", 'yellow');
-    selection.addRange(wordRange);
+    curRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", 'yellow');
+    selection.addRange(curRange);
 }
 
-function unSelectWord() {
-    const selection = wordRange.startContainer.ownerDocument.getSelection();
+function unselectRange() {
+    const selection = curRange.startContainer.ownerDocument.getSelection();
     if (selection)
-        selection.removeRange(wordRange);
+        selection.removeRange(curRange);
 
-    wordRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", '#ACCEF7');
-    wordRange = null;
+    curRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", '#ACCEF7');
+    curRange = null;
     sentence = false;
 }
 
@@ -160,12 +160,12 @@ async function translateWordFromPoint(el, x, y) {
         return
 
     if (transList.length > 0) {
-        selectWord(r);
+        selectRange(r);
         tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
         return;
     }
 
-    selectWord(r);
+    selectRange(r);
     tooltipManager.displayTextTooltip(el, r.getBoundingClientRect(), "No Definition Found");
 
     // if arabic word typeset wrongly and has space inside
@@ -184,7 +184,7 @@ async function translateWordFromPoint(el, x, y) {
     // r.setEnd(t, j);
     // transList = translator.translateWordIfArabic(r.toString());
     // if (transList != null && transList.length > 0) {
-    //     selectWord(r);
+    //     selectRange(r);
     //     tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
     //     return;
     // }
@@ -193,7 +193,7 @@ async function translateWordFromPoint(el, x, y) {
     // r.setEnd(t, orj);
     // transList = translator.translateWordIfArabic(r.toString());
     // if (transList != null && transList.length > 0) {
-    //     selectWord(r);
+    //     selectRange(r);
     //     tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
     //     return;
     // }
@@ -202,7 +202,7 @@ async function translateWordFromPoint(el, x, y) {
     // r.setEnd(t, j);
     // transList = translator.translateWordIfArabic(r.toString());
     // if (transList != null && transList.length > 0) {
-    //     selectWord(r);
+    //     selectRange(r);
     //     tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
     //     return;
     // }
@@ -216,7 +216,7 @@ function onKeyUp(e) {
     if (e.key == "s") {
         if (sentence) {
             sentence = false;
-            unSelectWord();
+            unselectRange();
             tooltipManager.hideToolTip();
         } else {
             translateCurrentSentence();
@@ -227,10 +227,10 @@ function onKeyUp(e) {
 }
 
 async function translateCurrentSentence() {
-    if (wordRange == null)
+    if (curRange == null)
         return;
     selectCurrentSentence();
-    let inputSentence = wordRange.toString()
+    let inputSentence = curRange.toString()
     let transSentence = await translator.translateSentence(inputSentence);
     console.log(transSentence)
     tooltipManager.setTextPopupHTML(transSentence);
@@ -238,7 +238,7 @@ async function translateCurrentSentence() {
 }
 
 function selectCurrentSentence() {
-    let r = wordRange;
+    let r = curRange;
     let t = r.startContainer;
     let s = t.nodeValue
     let i = r.startOffset;
@@ -246,7 +246,7 @@ function selectCurrentSentence() {
 
     let endPunc = [".", "!", "؟"]
 
-    while ((i - 1) >= 0 && !endPunc.includes(s[i-1]))
+    while (i > 0 && !endPunc.includes(s[i-1]))
         i--;
     while (j < s.length && !endPunc.includes(s[j-1]))
         j++;
@@ -257,29 +257,15 @@ function selectCurrentSentence() {
 
 async function voiceCurrentSelection() {
     console.log("v fired");
-    if (wordRange == null)
+    if (curRange == null)
         return;
-    const apiroot = "https://translate.googleapis.com/translate_tts?";
-    let params = {
-        client: "gtx",
-        ie: ":UTF-8",
-        tl: "ar",
-        tk: "435555.435555",
-        q: wordRange.toString()
-    };
-    const paramStr = new URLSearchParams(params);
-    const url = apiroot + paramStr;
 
-    const response = await fetch(url, {method: "GET"});
-    if (response.status != 200)
-        return null;
-
-    const ctx = new AudioContext();
-    let audioBuf = await response.arrayBuffer();
-    let audio = await ctx.decodeAudioData(audioBuf);
-
-    const playSound = ctx.createBufferSource();
-    playSound.buffer = audio;
-    playSound.connect(ctx.destination);
-    playSound.start(ctx.currentTime);
+    await new Promise((resolve) => {
+        chrome.runtime.sendMessage({
+            contentScriptQuery: "tts",
+            text: curRange.toString()
+        }, (response) => {
+            resolve(response)
+        })
+    })
 }

@@ -139,3 +139,41 @@ chrome.webRequest.onBeforeRequest.addListener(
 // }
 //
 // chrome.browserAction.onClicked.addListener(updateIcon);
+
+
+chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
+    (async function () {
+        if (req.contentScriptQuery == "tts") {
+            const apiroot = "https://translate.googleapis.com/translate_tts?";
+            let params = {
+                client: "gtx",
+                ie: ":UTF-8",
+                tl: "ar",
+                tk: "435555.435555",
+                q: req.text
+            };
+            const paramStr = new URLSearchParams(params);
+            const url = apiroot + paramStr;
+
+            let response = await fetch(url, {method: "GET"});
+            if (response.status != 200) {
+                sendResponse();
+                return;
+            }
+
+            let audioBuf = await response.arrayBuffer();
+            const ctx = new AudioContext();
+            let audio = await ctx.decodeAudioData(audioBuf);
+
+            const playSound = ctx.createBufferSource();
+            playSound.buffer = audio;
+            playSound.connect(ctx.destination);
+            playSound.start(ctx.currentTime);
+
+            sendResponse();
+        }
+    })();
+
+    return true;
+});
+
