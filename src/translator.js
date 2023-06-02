@@ -379,7 +379,7 @@ const exceptions = [
 
 Translator.prototype.translateWordIfArabic = function(uniWord) {
     uniWord = this.stripNonArabic(uniWord)
-    //remove space
+    uniWord = uniWord.replace(/ /g, "");
     let isArabic = uniWord.split('').every(c => Object.keys(this.uni2buck).includes(c))
     if (!isArabic) {
         return null
@@ -395,7 +395,7 @@ Translator.prototype.stripNonArabic = function(word) {
 
 Translator.prototype.translateArabicWord = function(uniWord) {
     uniWord = this.stripNonArabic(uniWord)
-    //uniWord remove space
+    uniWord = uniWord.replace(/ /g, "");
     let isArabic = uniWord.split('').every(c => Object.keys(this.uni2buck).includes(c))
     if (!isArabic) {
         throw new Error("Attempt translate non-arabic word")

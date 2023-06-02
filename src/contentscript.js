@@ -1,9 +1,6 @@
-
-
-
-if (typeof browser == "undefined") {
+// if (typeof browser == "undefined") {
     // browser = chrome
-}
+// }
 
 function InputManager() {
     this.mouseStillTimeout
@@ -11,6 +8,8 @@ function InputManager() {
     this.translator
     this.tooltipManager
     this.isEnabled
+    this.sentenceMode = false
+    this.lastMouseMoveEvent
 }
 
 InputManager.prototype.initialize = async function() {
@@ -52,12 +51,14 @@ InputManager.prototype.onMouseOver = function(e) {
 }
 
 InputManager.prototype.onMouseMove = function(e) {
+    this.lastMouseMoveEvent = e;
     let x = e.clientX, y = e.clientY;
     if (this.curRange) {
         if (this.within(x, y, this.curRange.getBoundingClientRect())) {
             return;
         }
 
+        this.sentenceMode = false;
         this.unselectRange();
         this.tooltipManager.hideToolTip();
     }
@@ -67,7 +68,6 @@ InputManager.prototype.onMouseMove = function(e) {
 }
 
 InputManager.prototype.onMouseStill = function(e) {
-    // console.log(e.target, e.clientX, e.clientY);
     this.translateWordUnderPoint(e.target, e.clientX, e.clientY);
 }
 
@@ -91,7 +91,6 @@ InputManager.prototype.unselectRange = function() {
 
     this.curRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", '#ACCEF7');
     this.curRange = null;
-    sentence = false;
 }
 
 InputManager.prototype.getTextNodeUnderPoint = function(n, x, y) {
@@ -146,68 +145,65 @@ InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
     while (i > 0 && this.translator.isArabicChar(s[(i - 1)]))
         i--;
 
-    r.setStart(t, i);
-    r.setEnd(t, j);
+    r.setStart(t, i); r.setEnd(t, j);
     let transList = this.translator.translateArabicWord(r.toString());
-
     if (transList.length > 0) {
         this.selectRange(r);
         this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
         return;
     }
 
+    // if arabic word typeset wrongly and has space inside
+    let ori = i, orj = j;
+    while (j < s.length && s[j] == ' ')
+        j++;
+    while (i > 0 && s[(i - 1)] == ' ')
+        i--;
+
+    while (j < s.length && this.translator.isArabicChar(s[j]))
+        j++;
+    while (i > 0 && this.translator.isArabicChar(s[(i - 1)]))
+        i--;
+
+    r.setStart(t, ori); r.setEnd(t, j);
+    transList = this.translator.translateArabicWord(r.toString());
+    if (transList.length > 0) {
+        this.selectRange(r);
+        this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
+        return;
+    }
+
+    r.setStart(t, i); r.setEnd(t, orj);
+    transList = this.translator.translateArabicWord(r.toString());
+    if (transList.length > 0) {
+        this.selectRange(r);
+        this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
+        return;
+    }
+
+    r.setStart(t, i); r.setEnd(t, j);
+    transList = this.translator.translateArabicWord(r.toString());
+    if (transList.length > 0) {
+        this.selectRange(r);
+        this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
+        return;
+    }
+
+    r.setStart(t, ori); r.setEnd(t, orj);
     this.selectRange(r);
     this.tooltipManager.displayTextTooltip(el, r.getBoundingClientRect(), "No Definition Found");
-
-    // if arabic word typeset wrongly and has space inside
-    // let ori = i, orj = j;
-    // if (j < s.length && s[j] == ' ')
-    //     j++;
-    // if (i > 0 && s[(i - 1)] == ' ')
-    //     i--;
-    //
-    // while (j < s.length && this.translator.isArabicChar(s[j]))
-    //     j++;
-    // while (i > 0 && this.translator.isArabicChar(s[(i - 1)]))
-    //     i--;
-    //
-    // r.setStart(t, ori);
-    // r.setEnd(t, j);
-    // transList = this.translator.translateWordIfArabic(r.toString());
-    // if (transList != null && transList.length > 0) {
-    //     this.selectRange(r);
-    //     this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
-    //     return;
-    // }
-    //
-    // r.setStart(t, i);
-    // r.setEnd(t, orj);
-    // transList = this.translator.translateWordIfArabic(r.toString());
-    // if (transList != null && transList.length > 0) {
-    //     this.selectRange(r);
-    //     this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
-    //     return;
-    // }
-    //
-    // r.setStart(t, i);
-    // r.setEnd(t, j);
-    // transList = this.translator.translateWordIfArabic(r.toString());
-    // if (transList != null && transList.length > 0) {
-    //     this.selectRange(r);
-    //     this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
-    //     return;
-    // }
 }
 
-let sentence = false;
 
 InputManager.prototype.onKeyUp = function(e) {
     if (e.key == "s") {
-        if (sentence) {
-            sentence = false;
+        if (this.sentenceMode) {
+            this.sentenceMode = false;
             this.unselectRange();
             this.tooltipManager.hideToolTip();
+            // this.lastMouseMoveEvent.target.dispatchEvent(this.lastMouseMoveEvent);
         } else {
+            this.sentenceMode = true;
             this.translateCurrentSentence();
         }
     } else if (e.key == "v") {
@@ -223,7 +219,6 @@ InputManager.prototype.translateCurrentSentence = async function() {
     let transSentence = await this.translator.translateSentence(inputSentence);
     console.log(transSentence)
     this.tooltipManager.setTextPopupHTML(transSentence);
-    sentence = true;
 }
 
 InputManager.prototype.selectCurrentSentence = function() {
