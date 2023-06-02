@@ -1,143 +1,136 @@
-let translator, tooltipManager
-let isEnabled = true
+
+
 
 if (typeof browser == "undefined") {
-    browser = chrome
+    // browser = chrome
 }
 
-async function initialize() {
+function InputManager() {
+    this.mouseStillTimeout
+    this.curRange
+    this.translator
+    this.tooltipManager
+    this.isEnabled
+}
+
+InputManager.prototype.initialize = async function() {
     console.log("Start Import")
+    
     const transFile = chrome.runtime.getURL('./translator.js');
     let transMod = await import(transFile)
-    translator = new transMod.Translator()
-    await translator.init()
+    this.translator = new transMod.Translator()
+    await this.translator.init()
+    
     const toolTipFile = chrome.runtime.getURL('./tooltip.js');
-    tooltipManager = await import(toolTipFile)
+    this.tooltipManager = await import(toolTipFile)
 
-    document.addEventListener("mouseover", onMouseOver)
-    document.addEventListener("mousemove", onMouseMove)
+    document.addEventListener("mouseover", this.onMouseOver.bind(this))
+    document.addEventListener("mousemove", this.onMouseMove.bind(this))
+    document.addEventListener("keyup", this.onKeyUp.bind(this));
+
+
 
     chrome.runtime.onMessage.addListener(msg => {
         if (msg === "toggleExtension") {
             console.log("success")
-            isEnabled = !isEnabled
+            this.isEnabled = !this.isEnabled
         }
     });
 }
 
-initialize()
-
-
-let mouseStillTimeout, curRange
-
-function onMouseOver(e) {
+InputManager.prototype.onMouseOver = function(e) {
     if (e.target.tagName == "IFRAME") {
-        // clearTimeout(mouseStillTimeout);
+        // clearTimeout(this.mouseStillTimeout);
 
         if (!('listenersSet' in e.target.dataset)) {
-            e.target.contentWindow.document.addEventListener("mouseover", onMouseOver);
-            e.target.contentWindow.document.addEventListener("mousemove", onMouseMove);
-            e.target.contentWindow.document.addEventListener("keyup", onKeyUp);
+            e.target.contentWindow.document.addEventListener("mouseover", this.onMouseOver.bind(this));
+            e.target.contentWindow.document.addEventListener("mousemove", this.onMouseMove.bind(this));
+            e.target.contentWindow.document.addEventListener("keyup", this.onKeyUp.bind(this));
             e.target.dataset.listenersSet = 'true';
         }
     }
 }
 
-function onMouseMove(e) {
+InputManager.prototype.onMouseMove = function(e) {
     let x = e.clientX, y = e.clientY;
-    if (curRange) {
-        if (within(x, y, curRange.getBoundingClientRect())) {
+    if (this.curRange) {
+        if (this.within(x, y, this.curRange.getBoundingClientRect())) {
             return;
         }
 
-        unselectRange();
-        tooltipManager.hideToolTip();
+        this.unselectRange();
+        this.tooltipManager.hideToolTip();
     }
 
-    clearTimeout(mouseStillTimeout);
-    mouseStillTimeout = setTimeout(onMouseStill, 100, e);
+    clearTimeout(this.mouseStillTimeout);
+    this.mouseStillTimeout = setTimeout(this.onMouseStill.bind(this), 100, e);
 }
 
-function onMouseStill(e) {
+InputManager.prototype.onMouseStill = function(e) {
     // console.log(e.target, e.clientX, e.clientY);
-    translateWordFromPoint(e.target, e.clientX, e.clientY);
+    this.translateWordUnderPoint(e.target, e.clientX, e.clientY);
 }
 
-function within(x, y, rect) {
+InputManager.prototype.within = function(x, y, rect) {
     return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
-function selectRange(r) {
-    curRange = r
-    const selection = curRange.startContainer.ownerDocument.getSelection();
+InputManager.prototype.selectRange = function(r) {
+    this.curRange = r
+    const selection = this.curRange.startContainer.ownerDocument.getSelection();
     selection.removeAllRanges();
 
-    curRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", 'yellow');
-    selection.addRange(curRange);
+    this.curRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", 'yellow');
+    selection.addRange(this.curRange);
 }
 
-function unselectRange() {
-    const selection = curRange.startContainer.ownerDocument.getSelection();
+InputManager.prototype.unselectRange = function() {
+    const selection = this.curRange.startContainer.ownerDocument.getSelection();
     if (selection)
-        selection.removeRange(curRange);
+        selection.removeRange(this.curRange);
 
-    curRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", '#ACCEF7');
-    curRange = null;
+    this.curRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", '#ACCEF7');
+    this.curRange = null;
     sentence = false;
 }
 
-function getTextNodeFromPoint(n, x, y) {
+InputManager.prototype.getTextNodeUnderPoint = function(n, x, y) {
     if (n.nodeType == Node.TEXT_NODE) {
         return n;
     }
-    range = document.createRange();
+    
+    let r = document.createRange();
     for (let i = 0; i < n.childNodes.length; i++) {
         let c = n.childNodes[i];
-        range.selectNode(c);
-        if (within(x, y, range.getBoundingClientRect())) {
-            return getTextNodeFromPoint(c, x, y);
+        r.selectNode(c);
+        if (this.within(x, y, r.getBoundingClientRect())) {
+            return this.getTextNodeUnderPoint(c, x, y);
         }
     }
     return null;
 }
 
-function getCharRangeFromPoint(t, x, y) {
+InputManager.prototype.getCharRangeUnderPoint = function(t, x, y) {
     let range = document.createRange();
     range.selectNodeContents(t);
 
-    let endPos = range.endOffset;
-    for (let curPos = 0; curPos < endPos; curPos++) {
-        range.setStart(t, curPos);
-        range.setEnd(t, curPos + 1);
-        if (within(x, y, range.getBoundingClientRect())) {
+    let n = range.endOffset;
+    for (let i = 0; i < n; i++) {
+        range.setStart(t, i);
+        range.setEnd(t, i+1);
+        if (this.within(x, y, range.getBoundingClientRect())) {
             return range;
         }
     }
     return null;
 }
 
-// function expandCharRange
-function expandCharRangeToWord(r) {
-    let t = r.startContainer;
-    let s = t.nodeValue
-    let i = r.startOffset;
-    let j = r.endOffset;
-
-    while (j < s.length && s[j] != ' ')
-        j++;
-    while ((i - 1) >= 0 && s[(i - 1)] != ' ')
-        i--;
-
-    r.setStart(t, i);
-    r.setEnd(t, j);
-}
-
-async function translateWordFromPoint(el, x, y) {
-    let t = getTextNodeFromPoint(el, x, y);
+InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
+    let t = this.getTextNodeUnderPoint(el, x, y);
     if (t == null)
         return;
 
-    let r = getCharRangeFromPoint(t, x, y);
+    let r = this.getCharRangeUnderPoint(t, x, y);
     if (r == null)
         return;
 
@@ -145,28 +138,26 @@ async function translateWordFromPoint(el, x, y) {
     let i = r.startOffset;
     let j = r.endOffset;
 
-    if (!translator.isArabicChar(s[i]))
+    if (!this.translator.isArabicChar(s[i]))
         return;
 
-    while (j < s.length && translator.isArabicChar(s[j]))
+    while (j < s.length && this.translator.isArabicChar(s[j]))
         j++;
-    while (i > 0 && translator.isArabicChar(s[(i - 1)]))
+    while (i > 0 && this.translator.isArabicChar(s[(i - 1)]))
         i--;
 
     r.setStart(t, i);
     r.setEnd(t, j);
-    let transList = translator.translateWordIfArabic(r.toString());
-    if (transList == null)
-        return
+    let transList = this.translator.translateArabicWord(r.toString());
 
     if (transList.length > 0) {
-        selectRange(r);
-        tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
+        this.selectRange(r);
+        this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
         return;
     }
 
-    selectRange(r);
-    tooltipManager.displayTextTooltip(el, r.getBoundingClientRect(), "No Definition Found");
+    this.selectRange(r);
+    this.tooltipManager.displayTextTooltip(el, r.getBoundingClientRect(), "No Definition Found");
 
     // if arabic word typeset wrongly and has space inside
     // let ori = i, orj = j;
@@ -175,70 +166,68 @@ async function translateWordFromPoint(el, x, y) {
     // if (i > 0 && s[(i - 1)] == ' ')
     //     i--;
     //
-    // while (j < s.length && translator.isArabicChar(s[j]))
+    // while (j < s.length && this.translator.isArabicChar(s[j]))
     //     j++;
-    // while (i > 0 && translator.isArabicChar(s[(i - 1)]))
+    // while (i > 0 && this.translator.isArabicChar(s[(i - 1)]))
     //     i--;
     //
     // r.setStart(t, ori);
     // r.setEnd(t, j);
-    // transList = translator.translateWordIfArabic(r.toString());
+    // transList = this.translator.translateWordIfArabic(r.toString());
     // if (transList != null && transList.length > 0) {
-    //     selectRange(r);
-    //     tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
+    //     this.selectRange(r);
+    //     this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
     //     return;
     // }
     //
     // r.setStart(t, i);
     // r.setEnd(t, orj);
-    // transList = translator.translateWordIfArabic(r.toString());
+    // transList = this.translator.translateWordIfArabic(r.toString());
     // if (transList != null && transList.length > 0) {
-    //     selectRange(r);
-    //     tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
+    //     this.selectRange(r);
+    //     this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
     //     return;
     // }
     //
     // r.setStart(t, i);
     // r.setEnd(t, j);
-    // transList = translator.translateWordIfArabic(r.toString());
+    // transList = this.translator.translateWordIfArabic(r.toString());
     // if (transList != null && transList.length > 0) {
-    //     selectRange(r);
-    //     tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
+    //     this.selectRange(r);
+    //     this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
     //     return;
     // }
-
 }
 
 let sentence = false;
 
-document.addEventListener("keyup", onKeyUp);
-function onKeyUp(e) {
+InputManager.prototype.onKeyUp = function(e) {
     if (e.key == "s") {
         if (sentence) {
             sentence = false;
-            unselectRange();
-            tooltipManager.hideToolTip();
+            this.unselectRange();
+            this.tooltipManager.hideToolTip();
         } else {
-            translateCurrentSentence();
+            this.translateCurrentSentence();
         }
     } else if (e.key == "v") {
-        voiceCurrentSelection();
+        this.voiceCurrentSelection();
     }
 }
 
-async function translateCurrentSentence() {
-    if (curRange == null)
+InputManager.prototype.translateCurrentSentence = async function() {
+    if (this.curRange == null)
         return;
-    selectCurrentSentence();
-    let inputSentence = curRange.toString()
-    let transSentence = await translator.translateSentence(inputSentence);
+    this.selectCurrentSentence();
+    let inputSentence = this.curRange.toString()
+    let transSentence = await this.translator.translateSentence(inputSentence);
     console.log(transSentence)
-    tooltipManager.setTextPopupHTML(transSentence);
+    this.tooltipManager.setTextPopupHTML(transSentence);
     sentence = true;
 }
 
-function selectCurrentSentence() {
-    let r = curRange;
+InputManager.prototype.selectCurrentSentence = function() {
+    let r = this.curRange;
     let t = r.startContainer;
     let s = t.nodeValue
     let i = r.startOffset;
@@ -255,17 +244,20 @@ function selectCurrentSentence() {
     r.setEnd(t, j);
 }
 
-async function voiceCurrentSelection() {
+InputManager.prototype.voiceCurrentSelection = async function() {
     console.log("v fired");
-    if (curRange == null)
+    if (this.curRange == null)
         return;
 
     await new Promise((resolve) => {
         chrome.runtime.sendMessage({
             contentScriptQuery: "tts",
-            text: curRange.toString()
+            text: this.curRange.toString()
         }, (response) => {
             resolve(response)
         })
     })
 }
+
+let inputManager = new InputManager()
+inputManager.initialize();
