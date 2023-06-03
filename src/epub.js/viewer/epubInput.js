@@ -38,6 +38,7 @@ async function openBook(e){
         width: "100%",
         height: 600
     });
+    // rendition.themes.default({ "p": { "font-size": "20px !important"}})
 
     console.log(book);
     console.log(rendition);

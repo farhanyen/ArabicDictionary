@@ -2,13 +2,18 @@
     // browser = chrome
 // }
 
+const Mode = ({
+    WORD: 0,
+    PHRASE: 1,
+    SENTENCE: 2
+})
 function InputManager() {
     this.mouseStillTimeout
     this.curRange
     this.translator
     this.tooltipManager
     this.isEnabled
-    this.sentenceMode = false
+    this.mode = Mode.WORD
     this.lastMouseMoveEvent
 }
 
@@ -59,7 +64,7 @@ InputManager.prototype.onMouseMove = function(e) {
         }
 
         this.sentenceMode = false;
-        this.unselectRange();
+        this.unSelectRange();
         this.tooltipManager.hideToolTip();
     }
 
@@ -84,7 +89,7 @@ InputManager.prototype.selectRange = function(r) {
     selection.addRange(this.curRange);
 }
 
-InputManager.prototype.unselectRange = function() {
+InputManager.prototype.unSelectRange = function() {
     const selection = this.curRange.startContainer.ownerDocument.getSelection();
     if (selection)
         selection.removeRange(this.curRange);
@@ -133,10 +138,7 @@ InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
     if (r == null)
         return;
 
-    let s = t.nodeValue;
-    let i = r.startOffset;
-    let j = r.endOffset;
-
+    let s = t.nodeValue, i = r.startOffset, j = r.endOffset;
     if (!this.translator.isArabicChar(s[i]))
         return;
 
@@ -153,7 +155,23 @@ InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
         return;
     }
 
+    transList = this.translateSpacedWord(r);
+    if (transList) {
+        this.selectRange(r);
+        this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
+        return;
+    }
+
+    this.selectRange(r);
+    this.tooltipManager.displayTextTooltip(el, r.getBoundingClientRect(), "No Definition Found");
+}
+
+InputManager.prototype.translateSpacedWord = function(wordRange) {
     // if arabic word typeset wrongly and has space inside
+    let r = wordRange
+    let t = r.startContainer
+    let s = t.nodeValue, i = r.startOffset, j = r.endOffset
+
     let ori = i, orj = j;
     while (j < s.length && s[j] == ' ')
         j++;
@@ -166,32 +184,25 @@ InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
         i--;
 
     r.setStart(t, ori); r.setEnd(t, j);
-    transList = this.translator.translateArabicWord(r.toString());
+    let transList = this.translator.translateArabicWord(r.toString());
     if (transList.length > 0) {
-        this.selectRange(r);
-        this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
-        return;
+        return transList;
     }
 
     r.setStart(t, i); r.setEnd(t, orj);
     transList = this.translator.translateArabicWord(r.toString());
     if (transList.length > 0) {
-        this.selectRange(r);
-        this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
-        return;
+        return transList;
     }
 
     r.setStart(t, i); r.setEnd(t, j);
     transList = this.translator.translateArabicWord(r.toString());
     if (transList.length > 0) {
-        this.selectRange(r);
-        this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
-        return;
+        return transList;
     }
 
     r.setStart(t, ori); r.setEnd(t, orj);
-    this.selectRange(r);
-    this.tooltipManager.displayTextTooltip(el, r.getBoundingClientRect(), "No Definition Found");
+    return [];
 }
 
 
@@ -199,7 +210,7 @@ InputManager.prototype.onKeyUp = function(e) {
     if (e.key == "s") {
         if (this.sentenceMode) {
             this.sentenceMode = false;
-            this.unselectRange();
+            this.unSelectRange();
             this.tooltipManager.hideToolTip();
             // this.lastMouseMoveEvent.target.dispatchEvent(this.lastMouseMoveEvent);
         } else {
