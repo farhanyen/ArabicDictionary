@@ -74,32 +74,30 @@ function setTextPopupHTML(text) {
     tooltip.innerHTML = createTextPopupHTML(text)
 }
 
-
-
 function positionTooltip(el, selectRect) {
-    let wordRect = JSON.parse(JSON.stringify(selectRect))
+    let r = JSON.parse(JSON.stringify(selectRect))
     
     let ancestorIFrame = el.ownerDocument.defaultView.frameElement
     if (ancestorIFrame) {
         // console.log(ancestorIFrame)
-        let ancRect = ancestorIFrame.getBoundingClientRect()
-        Array.from(['left','right','x']).forEach(key => {wordRect[key] += ancRect['x']})
-        Array.from(['top','bottom','y']).forEach(key => {wordRect[key] += ancRect['y']})
+        let ar = ancestorIFrame.getBoundingClientRect()
+        Array.from(['left','right','x']).forEach(key => {r[key] += ar['x']})
+        Array.from(['top','bottom','y']).forEach(key => {r[key] += ar['y']})
     }
     
-    tooltip.style.bottom = `${window.innerHeight - wordRect.y}px`
+    tooltip.style.bottom = `${window.innerHeight - r.y}px`
     tooltip.style.top = "auto"
-    tooltip.style.left = `${wordRect.x+wordRect.width}px`
+    tooltip.style.left = `${r.x+r.width}px`
     tooltip.style.right = "auto"
 
     let tipRect = tooltip.getBoundingClientRect()
     if (tipRect.top < 0) {
         tooltip.style.bottom = "auto"
-        tooltip.style.top = `${wordRect.y+wordRect.height}px`
+        tooltip.style.top = `${r.y+r.height}px`
     }
     if (tipRect.right > window.innerWidth) {
         tooltip.style.left = "auto"
-        tooltip.style.right = `${window.innerWidth - wordRect.x}px`
+        tooltip.style.right = `${window.innerWidth - r.x}px`
     }
     tipRect = tooltip.getBoundingClientRect()
     // console.log(`Top: ${tipRect.top} Bottom: ${tipRect.bottom} Left: ${tipRect.left} Right: ${tipRect.right}`)
