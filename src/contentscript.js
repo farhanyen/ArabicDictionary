@@ -57,7 +57,7 @@ InputManager.prototype.onMouseMove = function(e) {
     this.lastMouseMoveEvent = e;
     let x = e.clientX, y = e.clientY;
     if (this.selectedRange) {
-        if (this.withinRect(x, y, this.selectedRange.getBoundingClientRect())) {
+        if (this.withinRange(x, y, this.selectedRange)) {
             return;
         }
 
@@ -85,27 +85,26 @@ InputManager.prototype.onMouseStill = function(e) {
 
 InputManager.prototype.onKeyUp = function(e) {
     if (e.key == "c") {
+        this.unSelectRange();
+        this.tooltipManager.hideToolTip();
+
         let m_e = this.lastMouseMoveEvent;
 
         if (this.mode == Mode.PHRASE) {
             this.mode = Mode.WORD;
-
-            this.unSelectRange();
-            this.tooltipManager.hideToolTip();
-
             this.translateWordUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
         } else {
             this.mode = Mode.PHRASE;
             this.translatePhraseUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
         }
     } else if (e.key == "s") {
+        this.unSelectRange();
+        this.tooltipManager.hideToolTip();
+
         let m_e = this.lastMouseMoveEvent;
 
         if (this.mode == Mode.SENTENCE) {
             this.mode = Mode.WORD;
-
-            this.unSelectRange();
-            this.tooltipManager.hideToolTip();
 
             this.translateWordUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
         } else {
@@ -121,6 +120,14 @@ InputManager.prototype.onKeyUp = function(e) {
 
 InputManager.prototype.withinRect = function(x, y, rect) {
     return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
+InputManager.prototype.withinRange = function(x, y, range) {
+    for (let r of range.getClientRects()) {
+        if (this.withinRect(x, y, r))
+            return true;
+    }
+    return false;
 }
 
 InputManager.prototype.selectRange = function(r) {
@@ -163,26 +170,12 @@ InputManager.prototype.getCharRangeUnderPoint = function(t, x, y) {
 
     let n = range.endOffset;
     for (let i= 0; i < n; i++) {
-        range.setStart(t, i);
-        range.setEnd(t,i+1);
+        range.setStart(t, i); range.setEnd(t,i+1);
         if (this.withinRect(x, y, range.getBoundingClientRect())) {
             return range;
         }
     }
     return null;
-}
-
-InputManager.prototype.translateSentenceUnderPoint = async function(el, x, y) {
-    this.selectCurrentSentence(el, x, y);
-    if (this.selectedRange == null) {
-        return;
-    }
-    let inputSentence = this.selectedRange.toString()
-    let transSentence = await this.translator.translateSentence(inputSentence);
-
-    this.tooltipManager.displayTextTooltip(
-        el, this.selectedRange.getBoundingClientRect(), transSentence
-    );
 }
 
 InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
@@ -261,26 +254,52 @@ InputManager.prototype.translateSpacedWord = function(wordRange) {
     return [];
 }
 
+InputManager.prototype.translateSentenceUnderPoint = async function(el, x, y) {
+    this.selectCurrentSentence(el, x, y);
+    if (this.selectedRange == null) {
+        return;
+    }
+    let inputSentence = this.selectedRange.toString()
+    let transSentence = await this.translator.translateSentence(inputSentence);
+
+    this.tooltipManager.displayTextTooltip(
+        el, this.selectedRange.getBoundingClientRect(), transSentence
+    );
+}
+
 InputManager.prototype.selectCurrentSentence = function(el, x, y) {
+    this.selectedRange = null;
     let t = this.getTextNodeUnderPoint(el, x, y);
     if (t == null)
         return;
 
-    let r = this.getCharRangeUnderPoint(t, x, y);
+    let r = this.getSentenceRangeUnderPoint(t, x, y);
     if (r == null)
         return;
 
     let s = t.nodeValue, i = r.startOffset, j = r.endOffset;
+    if (Array.from(s).slice(i,j).every((c) => !this.translator.isArabicChar(c)))
+        return;
 
-    let endPunc = [".", "!", "؟"]
-
-    while (i > 0 && !endPunc.includes(s[i-1]))
-        i--;
-    while (j < s.length && !endPunc.includes(s[j-1]))
-        j++;
-
-    r.setStart(t, i); r.setEnd(t, j);
     this.selectRange(r)
+}
+
+InputManager.prototype.getSentenceRangeUnderPoint = function(t, x, y) {
+    let r = document.createRange();
+    r.selectNodeContents(t);
+
+    let s = t.nodeValue, i = 0, j = 0;
+    let endPunc = [".", "!", "؟"]
+    while (j < s.length) {
+        i = j; j++;
+        while (j < s.length && !endPunc.includes(s[j-1]))
+            j++;
+
+        r.setStart(t, i); r.setEnd(t, j);
+        if (this.withinRange(x, y, r))
+            return r;
+    }
+    return null;
 }
 
 
@@ -298,25 +317,38 @@ InputManager.prototype.translatePhraseUnderPoint = async function(el, x, y) {
 }
 
 InputManager.prototype.selectCurrentPhrase = function(el, x, y) {
+    this.selectedRange = null;
     let t = this.getTextNodeUnderPoint(el, x, y);
     if (t == null)
         return;
 
-    let r = this.getCharRangeUnderPoint(t, x, y);
+    let r = this.getPhraseRangeUnderPoint(t, x, y);
     if (r == null)
         return;
 
     let s = t.nodeValue, i = r.startOffset, j = r.endOffset;
+    if (Array.from(s).slice(i,j).every((c) => !this.translator.isArabicChar(c)))
+        return;
 
-    let endPunc = [".", "!", "؟", ":", "،", ",", "—"]
-
-    while (i > 0 && !endPunc.includes(s[i-1]))
-        i--;
-    while (j < s.length && !endPunc.includes(s[j-1]))
-        j++;
-
-    r.setStart(t, i); r.setEnd(t, j);
     this.selectRange(r);
+}
+
+InputManager.prototype.getPhraseRangeUnderPoint = function(t, x, y) {
+    let r = document.createRange();
+    r.selectNodeContents(t);
+
+    let s = t.nodeValue, i = 0, j = 0;
+    let endPunc = [".", "!", "؟", ":", "،", ",", "—"];
+    while (j < s.length) {
+        i = j; j++;
+        while (j < s.length && !endPunc.includes(s[j-1]))
+            j++;
+
+        r.setStart(t, i); r.setEnd(t, j);
+        if (this.withinRange(x, y, r))
+            return r;
+    }
+    return null;
 }
 
 InputManager.prototype.voiceCurrentSelection = async function() {
@@ -324,10 +356,27 @@ InputManager.prototype.voiceCurrentSelection = async function() {
     if (this.selectedRange == null)
         return;
 
+    let s = this.selectedRange.toString();
+
+    let excludeChars = ["«","»"]
+    s = s.replace(new RegExp(excludeChars.join('|'), 'g'), '')
+
+    if (this.mode != Mode.WORD) {
+        let harakatUni = this.translator.detransliterate(this.translator.harakat.join(''));
+        let phraseEndPunc = [".", "!", "؟", ":", "،", ",", "—"];
+        for (let i = 0; i < s.length; i++) {
+            if (i == s.length-1 || phraseEndPunc.includes(s[i+1])) {
+                if (harakatUni.includes(s[i])) {
+                    s = s.slice(0, i) + this.translator.detransliterate('o') + s.slice(i+1)
+                }
+            }
+        }
+    }
+
     await new Promise((resolve) => {
         chrome.runtime.sendMessage({
             contentScriptQuery: "tts",
-            text: this.selectedRange.toString()
+            text: s,
         }, (response) => {
             resolve(response)
         })
