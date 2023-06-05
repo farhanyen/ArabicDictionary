@@ -131,18 +131,17 @@ InputManager.prototype.withinRange = function(x, y, range) {
 }
 
 InputManager.prototype.selectRange = function(r) {
-    this.selectedRange = r
-    const selection = this.selectedRange.startContainer.ownerDocument.getSelection();
+    const selection = r.startContainer.ownerDocument.getSelection();
     selection.removeAllRanges();
 
-    this.selectedRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", 'yellow');
-    selection.addRange(this.selectedRange);
+    r.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", 'yellow');
+    selection.addRange(r);
+    this.selectedRange = r
 }
 
 InputManager.prototype.unSelectRange = function() {
     const selection = this.selectedRange.startContainer.ownerDocument.getSelection();
-    if (selection)
-        selection.removeRange(this.selectedRange);
+    selection.removeAllRanges();
 
     this.selectedRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", '#ACCEF7');
     this.selectedRange = null;
@@ -178,18 +177,19 @@ InputManager.prototype.getCharRangeUnderPoint = function(t, x, y) {
     return null;
 }
 
-InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
+
+InputManager.prototype.getWordRangeUnderPoint = function(el, x, y) {
     let t = this.getTextNodeUnderPoint(el, x, y);
     if (t == null)
-        return;
+        return null;
 
     let r = this.getCharRangeUnderPoint(t, x, y);
     if (r == null)
-        return;
+        return null;
 
     let s = t.nodeValue, i = r.startOffset, j = r.endOffset;
     if (!this.translator.isArabicChar(s[i]))
-        return;
+        return null;
 
     while (j < s.length && this.translator.isArabicChar(s[j]))
         j++;
@@ -197,6 +197,14 @@ InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
         i--;
 
     r.setStart(t, i); r.setEnd(t, j);
+    return r;
+}
+
+InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
+    let r = this.getWordRangeUnderPoint(el, x, y);
+    if (r == null)
+        return;
+
     let transList = this.translator.translateArabicWord(r.toString());
     if (transList.length > 0) {
         this.selectRange(r);
@@ -254,38 +262,14 @@ InputManager.prototype.translateSpacedWord = function(wordRange) {
     return [];
 }
 
-InputManager.prototype.translateSentenceUnderPoint = async function(el, x, y) {
-    this.selectCurrentSentence(el, x, y);
-    if (this.selectedRange == null) {
-        return;
-    }
-    let inputSentence = this.selectedRange.toString()
-    let transSentence = await this.translator.translateSentence(inputSentence);
-
-    this.tooltipManager.displayTextTooltip(
-        el, this.selectedRange.getBoundingClientRect(), transSentence
-    );
-}
-
-InputManager.prototype.selectCurrentSentence = function(el, x, y) {
-    this.selectedRange = null;
-    let t = this.getTextNodeUnderPoint(el, x, y);
-    if (t == null)
-        return;
-
-    let r = this.getSentenceRangeUnderPoint(t, x, y);
-    if (r == null)
-        return;
-
-    let s = t.nodeValue, i = r.startOffset, j = r.endOffset;
-    if (Array.from(s).slice(i,j).every((c) => !this.translator.isArabicChar(c)))
-        return;
-
-    this.selectRange(r)
-}
-
-InputManager.prototype.getSentenceRangeUnderPoint = function(t, x, y) {
+InputManager.prototype.getSentenceRangeUnderPoint = function(el, x, y) {
     let r = document.createRange();
+
+    let t = this.getTextNodeUnderPoint(el, x, y);
+    if (t == null) {
+        return null;
+    }
+
     r.selectNodeContents(t);
 
     let s = t.nodeValue, i = 0, j = 0;
@@ -303,38 +287,32 @@ InputManager.prototype.getSentenceRangeUnderPoint = function(t, x, y) {
 }
 
 
-InputManager.prototype.translatePhraseUnderPoint = async function(el, x, y) {
-    this.selectCurrentPhrase(el, x, y);
-    if (this.selectedRange == null) {
-        return;
-    }
-    let inputPhrase = this.selectedRange.toString()
-    let transPhrase = await this.translator.translateSentence(inputPhrase);
-
-    this.tooltipManager.displayTextTooltip(
-        el, this.selectedRange.getBoundingClientRect(), transPhrase
-    );
-}
-
-InputManager.prototype.selectCurrentPhrase = function(el, x, y) {
-    this.selectedRange = null;
-    let t = this.getTextNodeUnderPoint(el, x, y);
-    if (t == null)
-        return;
-
-    let r = this.getPhraseRangeUnderPoint(t, x, y);
+InputManager.prototype.translateSentenceUnderPoint = async function(el, x, y) {
+    let r = this.getSentenceRangeUnderPoint(el, x, y);
     if (r == null)
         return;
 
-    let s = t.nodeValue, i = r.startOffset, j = r.endOffset;
+    let s = r.startContainer.nodeValue, i = r.startOffset, j = r.endOffset;
     if (Array.from(s).slice(i,j).every((c) => !this.translator.isArabicChar(c)))
         return;
 
     this.selectRange(r);
+    let inputSentence = this.selectedRange.toString()
+    let transSentence = await this.translator.translateSentence(inputSentence);
+
+    this.tooltipManager.displayTextTooltip(
+        el, this.selectedRange.getBoundingClientRect(), transSentence
+    );
 }
 
-InputManager.prototype.getPhraseRangeUnderPoint = function(t, x, y) {
+
+InputManager.prototype.getPhraseRangeUnderPoint = function(el, x, y) {
     let r = document.createRange();
+
+    let t = this.getTextNodeUnderPoint(el, x, y);
+    if (t == null)
+        return null;
+
     r.selectNodeContents(t);
 
     let s = t.nodeValue, i = 0, j = 0;
@@ -349,6 +327,24 @@ InputManager.prototype.getPhraseRangeUnderPoint = function(t, x, y) {
             return r;
     }
     return null;
+}
+
+InputManager.prototype.translatePhraseUnderPoint = async function(el, x, y) {
+    let r = this.getPhraseRangeUnderPoint(el, x, y);
+    if (r == null)
+        return;
+
+    let s = r.startContainer.nodeValue, i = r.startOffset, j = r.endOffset;
+    if (Array.from(s).slice(i,j).every((c) => !this.translator.isArabicChar(c)))
+        return;
+
+    this.selectRange(r);
+    let inputPhrase = this.selectedRange.toString()
+    let transPhrase = await this.translator.translateSentence(inputPhrase);
+
+    this.tooltipManager.displayTextTooltip(
+        el, this.selectedRange.getBoundingClientRect(), transPhrase
+    );
 }
 
 InputManager.prototype.voiceCurrentSelection = async function() {
