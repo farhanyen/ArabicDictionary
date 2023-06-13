@@ -14,18 +14,18 @@ function createToolTip() {
     document.body.appendChild(tooltip)
 }
 
-function displayTransListTooltip(el, selectRect, transList) {
+function displayTransListTooltip(el, selectRangeList, transList) {
     tooltip.innerHTML = createTransPopupHTML(transList)
 
-    positionTooltip(el, selectRect)
+    positionTooltip(el, selectRangeList)
 
     tooltip.style.visibility = "visible"
 }
 
-function displayTextTooltip(el, selectRect, text) {
+function displayTextTooltip(el, selectRangeList, text) {
     tooltip.innerHTML = createTextPopupHTML(text);
     
-    positionTooltip(el, selectRect)
+    positionTooltip(el, selectRangeList)
     tooltip.style.visibility = "visible"
 }
 
@@ -74,33 +74,67 @@ function setTextPopupHTML(text) {
     tooltip.innerHTML = createTextPopupHTML(text)
 }
 
-function positionTooltip(el, selectRect) {
-    let r = JSON.parse(JSON.stringify(selectRect))
+function OOB(r) {
+    return r.top < 0 || r.bottom > window.innerHeight || r.left < 0 || r.right > window.innerWidth;
+}
+
+//NOTE: bottom & right are Different for js rect and css position!
+function positionTooltip(el, rangeList) {
+    let rl = rangeList;
+
+    let rT = rl[0];
+    let rB = rl[rl.length-1];
+
+    let cl = {
+        tr: {x: rT.right, y: rT.top},
+        tl: {x: rT.left, y: rT.top},
+        br: {x: rB.right, y: rB.bottom},
+        bl: {x: rB.left, y: rB.bottom},
+    }
     
     let ancestorIFrame = el.ownerDocument.defaultView.frameElement
     if (ancestorIFrame) {
-        // console.log(ancestorIFrame)
-        let ar = ancestorIFrame.getBoundingClientRect()
-        Array.from(['left','right','x']).forEach(key => {r[key] += ar['x']})
-        Array.from(['top','bottom','y']).forEach(key => {r[key] += ar['y']})
+        let ar = ancestorIFrame.getBoundingClientRect();
+        Object.values(cl).forEach((c) => {c.x += ar.x; c.y += ar.y});
     }
-    
-    tooltip.style.bottom = `${window.innerHeight - r.y}px`
-    tooltip.style.top = "auto"
-    tooltip.style.left = `${r.x+r.width}px`
-    tooltip.style.right = "auto"
 
+    let c = cl.tr;
+    tooltip.style.bottom = `${window.innerHeight - c.y}px`
+    tooltip.style.left = `${c.x}px`
+    tooltip.style.top = 'auto'
+    tooltip.style.right = 'auto'
     let tipRect = tooltip.getBoundingClientRect()
-    if (tipRect.top < 0) {
-        tooltip.style.bottom = "auto"
-        tooltip.style.top = `${r.y+r.height}px`
-    }
-    if (tipRect.right > window.innerWidth) {
-        tooltip.style.left = "auto"
-        tooltip.style.right = `${window.innerWidth - r.x}px`
-    }
+    if (!OOB(tipRect))
+        return;
+
+    c = cl.br;
+    tooltip.style.top = `${c.y}px`
+    tooltip.style.left = `${c.x}px`
+    tooltip.style.bottom = 'auto'
+    tooltip.style.right = 'auto'
     tipRect = tooltip.getBoundingClientRect()
-    // console.log(`Top: ${tipRect.top} Bottom: ${tipRect.bottom} Left: ${tipRect.left} Right: ${tipRect.right}`)
+    if (!OOB(tipRect))
+        return;
+
+    c = cl.bl;
+    tooltip.style.top = `${c.y}px`
+    tooltip.style.right = `${window.innerWidth - c.x}px`
+    tooltip.style.bottom = 'auto'
+    tooltip.style.left = 'auto'
+    tipRect = tooltip.getBoundingClientRect()
+    if (!OOB(tipRect))
+        return;
+
+    c = cl.tl;
+    tooltip.style.bottom = `${window.innerHeight - c.y}px`
+    tooltip.style.right = `${window.innerWidth - c.x}px`
+    tooltip.style.top = 'auto'
+    tooltip.style.left = 'auto'
+    tipRect = tooltip.getBoundingClientRect()
+    if (!OOB(tipRect))
+        return;
+
+    throw new Error("Couldn't position tooltip within bounds on any of 4 range corners");
 }
 
 function hideToolTip() {

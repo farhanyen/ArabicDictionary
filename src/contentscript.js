@@ -136,12 +136,17 @@ InputManager.prototype.selectRange = function(r) {
 
     r.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", 'yellow');
     selection.addRange(r);
-    this.selectedRange = r
+    // r.startContainer.parentElement.focus();
+
+    this.selectedRange = r;
 }
 
 InputManager.prototype.unSelectRange = function() {
+    if (this.selectedRange == null)
+        return;
     const selection = this.selectedRange.startContainer.ownerDocument.getSelection();
-    selection.removeAllRanges();
+    if (selection)
+        selection.removeAllRanges();
 
     this.selectedRange.startContainer.ownerDocument.documentElement.style.setProperty("--selection-bg-color", '#ACCEF7');
     this.selectedRange = null;
@@ -164,14 +169,14 @@ InputManager.prototype.getTextNodeUnderPoint = function(n, x, y) {
 }
 
 InputManager.prototype.getCharRangeUnderPoint = function(t, x, y) {
-    let range = document.createRange();
-    range.selectNodeContents(t);
+    let r = document.createRange();
+    r.selectNodeContents(t);
 
-    let n = range.endOffset;
+    let n = r.endOffset;
     for (let i= 0; i < n; i++) {
-        range.setStart(t, i); range.setEnd(t,i+1);
-        if (this.withinRect(x, y, range.getBoundingClientRect())) {
-            return range;
+        r.setStart(t, i); r.setEnd(t,i+1);
+        if (this.withinRect(x, y, r.getBoundingClientRect())) {
+            return r;
         }
     }
     return null;
@@ -208,26 +213,38 @@ InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
     let transList = this.translator.translateArabicWord(r.toString());
     if (transList.length > 0) {
         this.selectRange(r);
-        this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
+        this.tooltipManager.displayTransListTooltip(el, this.selectedRange.getClientRects(), transList);
         return;
     }
 
     transList = this.translateSpacedWord(r);
-    if (transList) {
+    if (transList.length > 0) {
         this.selectRange(r);
-        this.tooltipManager.displayTransListTooltip(el, r.getBoundingClientRect(), transList);
+        this.tooltipManager.displayTransListTooltip(el, this.selectedRange.getClientRects(), transList);
         return;
     }
 
+    // display someone's name
+    let s = r.startContainer.nodeValue, i = r.startOffset, j = r.endOffset;
+    if (i > 0 && s[i-1] == "«" && j < s.length-1 && s[j] == "»") {
+        let inputWord = r.toString();
+        let transWord = await this.translator.gTranslateSentence(inputWord);
+
+        this.selectRange(r);
+        this.tooltipManager.displayTextTooltip(el, this.selectedRange.getClientRects(), transWord);
+        return;
+    }
+
+
     this.selectRange(r);
-    this.tooltipManager.displayTextTooltip(el, r.getBoundingClientRect(), "No Definition Found");
+    this.tooltipManager.displayTextTooltip(el, this.selectedRange.getClientRects(), "No Definition Found");
 }
 
 InputManager.prototype.translateSpacedWord = function(wordRange) {
     // if arabic word typeset wrongly and has space inside
     let r = wordRange
     let t = r.startContainer
-    let s = t.nodeValue, i = r.startOffset, j = r.endOffset
+    let s = t.nodeValue, i = r.startOffset, j = r.endOffset;
 
     let ori = i, orj = j;
     while (j < s.length && s[j] == ' ')
@@ -273,7 +290,7 @@ InputManager.prototype.getSentenceRangeUnderPoint = function(el, x, y) {
     r.selectNodeContents(t);
 
     let s = t.nodeValue, i = 0, j = 0;
-    let endPunc = [".", "!", "؟"]
+    let endPunc = [".", "!", "؟", "؛"]
     while (j < s.length) {
         i = j; j++;
         while (j < s.length && !endPunc.includes(s[j-1]))
@@ -298,10 +315,13 @@ InputManager.prototype.translateSentenceUnderPoint = async function(el, x, y) {
 
     this.selectRange(r);
     let inputSentence = this.selectedRange.toString()
-    let transSentence = await this.translator.translateSentence(inputSentence);
+    let transSentence = await this.translator.gTranslateSentence(inputSentence);
 
+    if (this.selectedRange == null) {
+        console.log('ahh');
+    }
     this.tooltipManager.displayTextTooltip(
-        el, this.selectedRange.getBoundingClientRect(), transSentence
+        el, this.selectedRange.getClientRects(), transSentence
     );
 }
 
@@ -339,16 +359,15 @@ InputManager.prototype.translatePhraseUnderPoint = async function(el, x, y) {
         return;
 
     this.selectRange(r);
-    let inputPhrase = this.selectedRange.toString()
-    let transPhrase = await this.translator.translateSentence(inputPhrase);
+    let inputPhrase = this.selectedRange.toString();
+    let transPhrase = await this.translator.gTranslatePhrase(inputPhrase);
 
     this.tooltipManager.displayTextTooltip(
-        el, this.selectedRange.getBoundingClientRect(), transPhrase
+        el, this.selectedRange.getClientRects(), transPhrase
     );
 }
 
 InputManager.prototype.voiceCurrentSelection = async function() {
-    console.log("v fired");
     if (this.selectedRange == null)
         return;
 
