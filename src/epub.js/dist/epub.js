@@ -11934,7 +11934,7 @@ class container_Container {
 // CONCATENATED MODULE: ./src/packaging.js
 
 /**
- * Open Packaging Format Parser
+ * Open Packaging Format Scanner
  * @class
  * @param {document} packageDocument OPF XML
  */
@@ -12302,7 +12302,7 @@ class packaging_Packaging {
 // CONCATENATED MODULE: ./src/navigation.js
 
 /**
- * Navigation Parser
+ * Navigation Scanner
  * @param {document} xml navigation html / xhtml / ncx
  */
 
@@ -13154,7 +13154,7 @@ class resources_Resources {
 
 
 /**
- * Page List Parser
+ * Page List Scanner
  * @param {document} [xml]
  */
 
@@ -20925,7 +20925,7 @@ event_emitter_default()(store_Store.prototype);
 // CONCATENATED MODULE: ./src/displayoptions.js
 
 /**
- * Open DisplayOptions Format Parser
+ * Open DisplayOptions Format Scanner
  * @class
  * @param {document} displayOptionsDocument XML
  */

@@ -1,4 +1,4 @@
-import {BuckDict} from "./buckdict.js";
+// import {BuckDict} from "./buckdict.js";
 
 let isNodeJS = typeof window === 'undefined'
 if (isNodeJS)
@@ -13,6 +13,14 @@ Translator.prototype.init = async function() {
     const {BuckDict} = await import(buckDictURL)
     this.buckDict = new BuckDict()
     await this.buckDict.init()
+
+    this.harakat = this.buckDict.harakat
+    this.transliterate = this.buckDict.transliterate.bind(this.buckDict)
+    this.detransliterate = this.buckDict.detransliterate.bind(this.buckDict)
+
+    const scannerURL = isNodeJS ? './scanner.js' : chrome.runtime.getURL('./scanner.js');
+    const {Scanner} = await import(scannerURL)
+    this.scanner = Scanner
 }
 
 Translator.prototype.isArabicChar = function(c) {
@@ -62,112 +70,47 @@ Translator.prototype.gTranslatePhrase = async function(s) {
 }
 
 
-Translator.prototype.processTransSentence = function(slist) {
-    let transSentence = ""
-    for (let i = 0; i < slist.length; i++) {
-        slist[i] = slist[i].replace(/\s+$/, " ")
+Translator.prototype.concatGTransList = function(slist) {
+    slist = slist.map((s) => s.trim());
 
-        if (i == 0 || slist[i-1].slice(-2, -1) == '.')
-            slist[i] = slist[i][0].toUpperCase() + slist[i].slice(1)
+    for (let i = 1; i < slist.length; i++) {
+        if (slist[i][0] == slist[i][0].toLowerCase())
+            slist[i-1] = slist[i-1].slice(0, -1) + ","
         else
-            slist[i] = slist[i][0].toLowerCase() + slist[i].slice(1)
-
-        transSentence += slist[i]
+            slist[i-1] = slist[i-1].slice(0, -1) + "."
     }
-    return transSentence
+
+    
+    return slist.join(" ");
 }
 
 Translator.prototype.gTranslateSentence = async function(s) {
-    s = s.replace(/\s+/g,' ')
+    s = s.replace(/\s+/g,' ').trim()
+    let ar_end_clause = ["،", ":"]
+    s = s.replace(new RegExp(`([${ar_end_clause.join('')}])([^ ])`, 'g'), "$1 $2")
 
-    let tList = await this.gTranslateText(s);
-    let t = this.processTransSentence(tList);
 
-    let arCommas = s.split("،").length -1, ca = 0, cb = 0;
-    let midPeriodFound = false;
-    let i = 0;
-    while (i < t.length) {
-        switch (t[i]) {
-            case ".":
-                if (i != t.length-1 && !(t[i-1] == "." || t[i+1] == ".")) {
-                    midPeriodFound = true;
-                }
-                i++; continue;
-            case ",":
-                midPeriodFound ? ca++ : cb++;
-                if (i <= t.length-5 && t.slice(i, i+5) == ", and") {
-                    i += 5; continue;
-                }
-                i++; continue;
-            case "a":
-                if (i <= t.length-3 && t.slice(i, i+3) == "and") {
-                    midPeriodFound ? ca++ : cb++;
-                    i += 3; continue;
-                }
-                i++; continue;
-            default:
-                i++;
-        }
+    let s1 = s.replace(/«|»/g, ''), s2 = s;
+    let [tList1, tList2] = await Promise.all([
+        this.gTranslateText(s1),
+        this.gTranslateText(s2)
+    ])
+
+    let t1 = this.concatGTransList(tList1);
+    let pt1 = new this.scanner(t1, false);
+    pt1.scanChunks();
+    
+    let t2 = this.concatGTransList(tList2);
+    let pt2 = new this.scanner(t2, false);
+    pt2.scanChunks();
+
+    if (pt1.firstMidPeriodChunk != -1) {
+        return this.spliceRetryTranslateSentence(s1, pt1);
+    } else if (pt2.firstMidPeriodChunk != -1) {
+        return this.spliceRetryTranslateSentence(s2, pt2);
     }
-    if (midPeriodFound) {
-        function skipWord(s, i) {
-            while (!["،", " "].includes(s[i]) && i < s.length)
-                i++;
-            return i;
-        }
 
-        let breakIndexes = [];
-        let i = 0;
-        while (i < s.length) {
-            switch(s[i]) {
-                case " ":
-                    i++; continue;
-                case "،":
-                    i++; breakIndexes.push(i);
-                    if (s.slice(i, i+2) == " و") {
-                        i += 2;
-                        i = skipWord(s, i);
-                    }
-                    continue;
-                case "و":
-                    breakIndexes.push(i); 
-                    i = skipWord(s, i); continue;
-                default:
-                    i = skipWord(s, i); continue;
-            }
-        }
-
-        let chunks = [];
-        for (let i = 0; i < breakIndexes.length; i++) {
-            if (i == 0) {
-                chunks.push(s.slice(0, breakIndexes[0]))
-            } else {
-                chunks.push(s.slice(breakIndexes[i-1], breakIndexes[i]));
-            }
-        }
-        chunks.push(s.slice(breakIndexes[breakIndexes.length-1]));
-        chunks = chunks.map(c => c.trim());
-
-        i = 0; let longChunk = false
-        while (i < ca+1 || longChunk == false || chunks[chunks.length-1-i].slice(-1) != "،") {
-            let c = chunks[chunks.length-1-i];
-            if (c.split(" ").length > 3)
-                longChunk = true;
-            i++;
-        }
-
-        let s1 = chunks.slice(0, chunks.length-i).join(" ");
-        let s2 = chunks.slice(chunks.length-i).join(" ");
-
-        let modS = s1 + "\n" + s2;
-
-        let excludeChars = ["«","»"];
-        modS = modS.replace(new RegExp(excludeChars.join('|'), 'g'), '');
-
-        tList = await this.gTranslateText(modS);
-        t = this.processTransSentence(tList);
-        return t;
-    }
+    let t = t1;
 
     let colonNum = 0; let breakColonFound = false;
     for (let i = 0; i < t.length; i++) {
@@ -184,14 +127,53 @@ Translator.prototype.gTranslateSentence = async function(s) {
 
         let modS = s.slice(0, breakColonIndex+1) + "\n" + s.slice(breakColonIndex+1);
 
-        let excludeChars = ["«","»"];
-        modS = modS.replace(new RegExp(excludeChars.join('|'), 'g'), '');
+        modS = modS.replace(/«|»/g, '')
 
-        tList = await this.gTranslateText(modS);
-        t = this.processTransSentence(tList)
+        let tList = await this.gTranslateText(modS);
+        let t = this.concatGTransList(tList)
         return t;
     }
 
+    return t;
+}
+
+Translator.prototype.spliceRetryTranslateSentence = async function (s, transParser) {
+    let pt = transParser;
+
+    let pa = new this.scanner(s, true);
+    pa.scanChunks();
+    let chunks = pa.chunks;
+
+    let breakChunkFromLast = pa.chunks.length - pt.firstMidPeriodChunk;
+    if (pt.chunks[pt.firstMidPeriodChunk].slice(-1) == "." && pt.chunks.length == pa.chunks.length && pt.firstMidPeriodChunk < pt.chunks.length-1)
+        breakChunkFromLast--;
+
+    function lastNChunkstoLongChunk(chunks, n) {
+        let longChunk = false; let chunkLen = 0;
+        for (let i = 1; i < chunks.length; i++) {
+            let chunk = chunks[chunks.length-i];
+            if (chunk.slice(-1) == "،")
+                chunkLen = 0;
+            chunkLen += chunk.split(" ").length;
+            if (chunkLen > 3)
+                longChunk = true;
+
+            if (i >= n && longChunk && chunks[chunks.length-i-1].slice(-1) == "،")
+                return i;
+        }
+        return n;
+    }
+    let i = lastNChunkstoLongChunk(chunks, breakChunkFromLast);
+
+    let s1 = chunks.slice(0, chunks.length-i).join(" ");
+    let s2 = chunks.slice(chunks.length-i).join(" ");
+
+    s1 = s1.slice(0, -1) + ".";
+    let modS = s1 + "\n" + s2;
+    modS = modS.replace(/«|»/g, '')
+
+    let tList = await this.gTranslateText(modS);
+    let t = this.concatGTransList(tList);
     return t;
 }
 

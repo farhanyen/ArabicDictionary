@@ -182,7 +182,6 @@ InputManager.prototype.getCharRangeUnderPoint = function(t, x, y) {
     return null;
 }
 
-
 InputManager.prototype.getWordRangeUnderPoint = function(el, x, y) {
     let t = this.getTextNodeUnderPoint(el, x, y);
     if (t == null)
@@ -303,7 +302,6 @@ InputManager.prototype.getSentenceRangeUnderPoint = function(el, x, y) {
     return null;
 }
 
-
 InputManager.prototype.translateSentenceUnderPoint = async function(el, x, y) {
     let r = this.getSentenceRangeUnderPoint(el, x, y);
     if (r == null)
@@ -324,7 +322,6 @@ InputManager.prototype.translateSentenceUnderPoint = async function(el, x, y) {
         el, this.selectedRange.getClientRects(), transSentence
     );
 }
-
 
 InputManager.prototype.getPhraseRangeUnderPoint = function(el, x, y) {
     let r = document.createRange();
@@ -366,6 +363,7 @@ InputManager.prototype.translatePhraseUnderPoint = async function(el, x, y) {
         el, this.selectedRange.getClientRects(), transPhrase
     );
 }
+
 
 InputManager.prototype.voiceCurrentSelection = async function() {
     if (this.selectedRange == null)

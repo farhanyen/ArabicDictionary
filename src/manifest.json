@@ -21,7 +21,7 @@
   "browser_action": {
     "name": "Click to change the icon's color"
   },
-  "web_accessible_resources": ["translator.js", "tooltip.js", "data/*", "selection.css"],
+  "web_accessible_resources": ["scanner.js","buckdict.js","translator.js", "tooltip.js", "data/*", "selection.css"],
   "permissions": [
     "webRequest",
     "webRequestBlocking",
