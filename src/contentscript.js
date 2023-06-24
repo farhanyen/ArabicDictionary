@@ -7,6 +7,11 @@ const Mode = ({
     PHRASE: 1,
     SENTENCE: 2
 })
+
+const TransType = {
+    TEXT: 0,
+    TRANSLIST: 1
+}
 function InputManager() {
     this.mouseStillTimeout
     this.selectedRange
@@ -66,7 +71,8 @@ InputManager.prototype.onMouseMove = function(e) {
     }
 
     clearTimeout(this.mouseStillTimeout);
-    this.mouseStillTimeout = setTimeout(this.onMouseStill.bind(this), 100, e);
+    if (!(e.buttons & 1))
+        this.mouseStillTimeout = setTimeout(this.onMouseStill.bind(this), 100, e);
 }
 
 InputManager.prototype.onMouseStill = function(e) {
@@ -84,35 +90,42 @@ InputManager.prototype.onMouseStill = function(e) {
 }
 
 InputManager.prototype.onKeyUp = function(e) {
-    if (e.key == "c") {
-        this.unSelectRange();
-        this.tooltipManager.hideToolTip();
+    let m_e = this.lastMouseMoveEvent
+    switch (e.key) {
+        case 'w':
+            this.unSelectRange();
+            this.tooltipManager.hideToolTip();
 
-        let m_e = this.lastMouseMoveEvent;
-
-        if (this.mode == Mode.PHRASE) {
             this.mode = Mode.WORD;
             this.translateWordUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
-        } else {
-            this.mode = Mode.PHRASE;
-            this.translatePhraseUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
-        }
-    } else if (e.key == "s") {
-        this.unSelectRange();
-        this.tooltipManager.hideToolTip();
+            break;
+        case 'c':
+            this.unSelectRange();
+            this.tooltipManager.hideToolTip();
 
-        let m_e = this.lastMouseMoveEvent;
+            if (this.mode == Mode.PHRASE) {
+                this.mode = Mode.WORD;
+                this.translateWordUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
+            } else {
+                this.mode = Mode.PHRASE;
+                this.translatePhraseUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
+            }
+            break;
+        case 's':
+            this.unSelectRange();
+            this.tooltipManager.hideToolTip();
 
-        if (this.mode == Mode.SENTENCE) {
-            this.mode = Mode.WORD;
-
-            this.translateWordUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
-        } else {
-            this.mode = Mode.SENTENCE;
-            this.translateSentenceUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
-        }
-    } else if (e.key == "v") {
-        this.voiceCurrentSelection();
+            if (this.mode == Mode.SENTENCE) {
+                this.mode = Mode.WORD;
+                this.translateWordUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
+            } else {
+                this.mode = Mode.SENTENCE;
+                this.translateSentenceUnderPoint(m_e.target, m_e.clientX, m_e.clientY);
+            }
+            break;
+        case 'v':
+            this.voiceCurrentSelection();
+            break;
     }
 }
 
@@ -209,17 +222,16 @@ InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
     if (r == null)
         return;
 
+    this.selectRange(r);
     let transList = this.translator.translateArabicWord(r.toString());
     if (transList.length > 0) {
-        this.selectRange(r);
-        this.tooltipManager.displayTransListTooltip(el, this.selectedRange.getClientRects(), transList);
+        this.displayTranslation(el, r, Mode.WORD, TransType.TRANSLIST, transList);
         return;
     }
 
     transList = this.translateSpacedWord(r);
     if (transList.length > 0) {
-        this.selectRange(r);
-        this.tooltipManager.displayTransListTooltip(el, this.selectedRange.getClientRects(), transList);
+        this.displayTranslation(el, r, Mode.WORD, TransType.TRANSLIST, transList);
         return;
     }
 
@@ -229,14 +241,10 @@ InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
         let inputWord = r.toString();
         let transWord = await this.translator.gTranslateSentence(inputWord);
 
-        this.selectRange(r);
-        this.tooltipManager.displayTextTooltip(el, this.selectedRange.getClientRects(), transWord);
-        return;
+        this.displayTranslation(el, r, Mode.WORD, TransType.TEXT, transWord);
     }
 
-
-    this.selectRange(r);
-    this.tooltipManager.displayTextTooltip(el, this.selectedRange.getClientRects(), "No Definition Found");
+    this.displayTranslation(el, r, Mode.WORD, TransType.TEXT, "No Definition Found");
 }
 
 InputManager.prototype.translateSpacedWord = function(wordRange) {
@@ -312,15 +320,10 @@ InputManager.prototype.translateSentenceUnderPoint = async function(el, x, y) {
         return;
 
     this.selectRange(r);
-    let inputSentence = this.selectedRange.toString()
+    let inputSentence = r.toString()
     let transSentence = await this.translator.gTranslateSentence(inputSentence);
 
-    if (this.selectedRange == null) {
-        console.log('ahh');
-    }
-    this.tooltipManager.displayTextTooltip(
-        el, this.selectedRange.getClientRects(), transSentence
-    );
+    this.displayTranslation(el, r, Mode.SENTENCE, TransType.TEXT, transSentence);
 }
 
 InputManager.prototype.getPhraseRangeUnderPoint = function(el, x, y) {
@@ -356,14 +359,25 @@ InputManager.prototype.translatePhraseUnderPoint = async function(el, x, y) {
         return;
 
     this.selectRange(r);
-    let inputPhrase = this.selectedRange.toString();
+    let inputPhrase = r.toString();
     let transPhrase = await this.translator.gTranslatePhrase(inputPhrase);
 
-    this.tooltipManager.displayTextTooltip(
-        el, this.selectedRange.getClientRects(), transPhrase
-    );
+    this.displayTranslation(el, r, Mode.PHRASE, TransType.TEXT, transPhrase);
 }
 
+InputManager.prototype.displayTranslation = function(el, r, mode, transType, transContent) {
+    if (mode != this.mode)
+        return;
+
+    switch(transType) {
+        case TransType.TEXT:
+            this.tooltipManager.displayTextTooltip(el, this.selectedRange.getClientRects(), transContent);
+            return;
+        case TransType.TRANSLIST:
+            this.tooltipManager.displayTransListTooltip(el, this.selectedRange.getClientRects(), transContent);
+            return;
+    }
+}
 
 InputManager.prototype.voiceCurrentSelection = async function() {
     if (this.selectedRange == null)
