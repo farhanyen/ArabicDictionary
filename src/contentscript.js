@@ -35,7 +35,7 @@ InputManager.prototype.initialize = async function() {
 
     document.addEventListener("mouseover", this.onMouseOver.bind(this))
     document.addEventListener("mousemove", this.onMouseMove.bind(this))
-    document.addEventListener("keyup", this.onKeyUp.bind(this));
+    document.addEventListener("keydown", this.onKeyDown.bind(this));
     
     chrome.runtime.onMessage.addListener(msg => {
         if (msg === "toggleExtension") {
@@ -52,7 +52,7 @@ InputManager.prototype.onMouseOver = function(e) {
         if (!('listenersSet' in e.target.dataset)) {
             e.target.contentWindow.document.addEventListener("mouseover", this.onMouseOver.bind(this));
             e.target.contentWindow.document.addEventListener("mousemove", this.onMouseMove.bind(this));
-            e.target.contentWindow.document.addEventListener("keyup", this.onKeyUp.bind(this));
+            e.target.contentWindow.document.addEventListener("keydown", this.onKeyDown.bind(this));
             e.target.dataset.listenersSet = 'true';
         }
     }
@@ -89,9 +89,25 @@ InputManager.prototype.onMouseStill = function(e) {
     }
 }
 
-InputManager.prototype.onKeyUp = function(e) {
-    let m_e = this.lastMouseMoveEvent
+InputManager.prototype.onKeyDown = async function(e) {
+    if (e.metaKey || e.repeat)
+        return;
+
+    let m_e = this.lastMouseMoveEvent;
     switch (e.key) {
+        case 'a':
+            let wRange = this.getWordRangeUnderPoint(m_e.target, m_e.clientX, m_e.clientY).toString();
+            if (wRange == null)
+                return;
+            let sRange= this.getSentenceRangeUnderPoint(m_e.target, m_e.clientX, m_e.clientY).toString();
+
+            let curWord = wRange.toString(), curSentence = sRange.toString();
+
+            let wordTrans = this.translator.translateArabicWord(curWord);
+            let sentenceTrans = await this.translator.gTranslateSentence(curSentence);
+
+            console.log(curWord); console.log(curSentence); console.log(wordTrans); console.log(sentenceTrans);
+            break;
         case 'w':
             this.unSelectRange();
             this.tooltipManager.hideToolTip();
@@ -239,9 +255,10 @@ InputManager.prototype.translateWordUnderPoint = async function(el, x, y) {
     let s = r.startContainer.nodeValue, i = r.startOffset, j = r.endOffset;
     if (i > 0 && s[i-1] == "«" && j < s.length-1 && s[j] == "»") {
         let inputWord = r.toString();
-        let transWord = await this.translator.gTranslateSentence(inputWord);
+        let transWord = await this.translator.gTranslateWord(inputWord);
 
         this.displayTranslation(el, r, Mode.WORD, TransType.TEXT, transWord);
+        return;
     }
 
     this.displayTranslation(el, r, Mode.WORD, TransType.TEXT, "No Definition Found");

@@ -24,14 +24,32 @@ let testStrings = [
 ];
 
 
-let t;
-for (let i = 0; i < testStrings.length; i++) {
-    t = await translator.gTranslateSentence(testStrings[i]);
-    console.log(t);
-}
+// let t;
+// for (let i = 0; i < testStrings.length; i++) {
+//     t = await translator.gTranslateSentence(testStrings[i]);
+//     console.log(t);
+// }
 
 // t = await translator.gTranslateSentence(testStrings[1]);
 // console.log(t);
 
 // t = await translator.gTranslateSentence(testStrings.slice(-1)[0]);
 // console.log(t);
+
+// let w1 =  "تَجْري";
+// let t1 = await translator.translateArabicWord(w1);
+// console.log(t1);
+
+// let w2 = "تَخَافُ";
+// let t2 = await translator.translateArabicWord(w2);
+// console.log(t2);
+
+
+
+// let w3 =  "تَأْكُلَهَا";
+// let t3 = await translator.translateArabicWord(w3);
+// console.log(t3);
+
+let w4 =  "تَلْحَقَهُ";
+let t4 = await translator.translateArabicWord(w4);
+console.log(t4);

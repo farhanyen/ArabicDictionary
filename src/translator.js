@@ -1,5 +1,3 @@
-// import {BuckDict} from "./buckdict.js";
-
 let isNodeJS = typeof window === 'undefined'
 if (isNodeJS)
     globalThis.fetch = (await import("node-fetch")).default;

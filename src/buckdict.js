@@ -1,4 +1,5 @@
-if (typeof window === 'undefined')
+let isNodeJS = typeof window === 'undefined'
+if (isNodeJS)
     globalThis.fetch = (await import("node-fetch")).default;
 async function readLocalFile(fp) {
     const fs = await import('fs')
@@ -108,6 +109,10 @@ function BuckDict() {
 }
 
 BuckDict.prototype.init = async function() {
+    // const utilsURL = isNodeJS ? './utils.js' : chrome.runtime.getURL('./utils.js');
+    // const {Utils} = await import(utilsURL)
+    // this.utils = new Utils()
+
     this.initBuck()
     await this.loadDictData()
 }
@@ -213,7 +218,12 @@ BuckDict.prototype.getSegmentsTransList = function(pref, stem, suff) {
 
                 const trans = {
                     word: prefEntry.harakat + stemEntry.harakat + suffEntry.harakat,
-                    def: (prefEntry.def ? `[${prefEntry.def}] `:"") + stemEntry.def + (suffEntry.def ? ` [${suffEntry.def}]`:""),
+                    // prefEntry: prefEntry,
+                    // stemEntry: stemEntry,
+                    // suffEntry: suffEntry,
+                    prefSet: prefEntry.def ? prefEntry.def.split("/"): [],
+                    stemDef: stemEntry.def,
+                    suffSet: suffEntry.def ? suffEntry.def.split("/"): [],
                     root: stemEntry.root
                 }
                 transList.push(trans)
@@ -245,7 +255,7 @@ BuckDict.prototype.removeHarakat = function(buckWord) {
     return buckWord.replace(new RegExp(this.harakat.join('|'), 'g'), '')
 }
 
-BuckDict.prototype.removeConflictingTrans = function(transList, buckWord) {
+BuckDict.prototype.transListRemoveHarakatConflicts = function(transList, buckWord) {
     let litWord = this.stripHarakat(buckWord)
     let newList = [];
     for (let trans of transList) {
@@ -306,9 +316,46 @@ BuckDict.prototype.compareLetters = function(l1, l2) {
     return sub1 || sub2;
 }
 
+BuckDict.prototype.transListMergeDuplicate = function (transList) {
+    let tl = transList;
+    for (let i = 0; i < tl.length; i++) {
+        for (let j = 0; j < tl.length; j++) {
+            if (tl[i].word != tl[j].word || tl[i].stemDef != tl[j].stemDef ||
+                tl[i].root != tl[j].root)
+                continue;
+
+            if (tl[i].prefSet.sort().join() != tl[j].prefSet.sort().join() &&
+                tl[i].suffSet.sort().join() == tl[j].suffSet.sort().join()) {
+                tl[i].prefSet = Array.from(new Set([...tl[i].prefSet, ...tl[j].prefSet]));
+                tl.splice(j, 1);
+                return true;
+            }
+
+            if (tl[i].suffSet.sort().join() != tl[j].suffSet.sort().join() &&
+                tl[i].prefSet.sort().join() == tl[j].prefSet.sort().join()){
+                tl[i].suffSet = Array.from(new Set([...tl[i].suffSet, ...tl[j].suffSet]));
+                tl.splice(j, 1);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+BuckDict.prototype.transListMergeDuplicates = function (transList) {
+    while (this.transListMergeDuplicate(transList)) {};
+    return transList;
+}
+
 BuckDict.prototype.translateBuckWord = function (buckWord) {
-    let transList = this.getTransList(this.removeHarakat(buckWord))
-    return this.removeConflictingTrans(transList, buckWord)
+    let tl = this.getTransList(this.removeHarakat(buckWord));
+    tl = this.transListRemoveHarakatConflicts(tl, buckWord);
+    tl = this.transListMergeDuplicates(tl);
+
+    for (let t of tl) {
+        t.def = (t.prefSet.length > 0 ? `[${t.prefSet.join('/')}] `:'') + t.stemDef + (t.suffSet.length > 0 ? ` [${t.suffSet.join('/')}]`:'');
+    }
+    return tl;
 }
 
 BuckDict.prototype.transliterate = function(uniWord) {
