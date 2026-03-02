@@ -1,4 +1,4 @@
-import {Translator} from "./translator.js"
+import Translator from "./translator.js"
 import fetch from "node-fetch";
 
 let translator = new Translator()
@@ -24,32 +24,38 @@ let testStrings = [
 ];
 
 
-// let t;
+let t;
 // for (let i = 0; i < testStrings.length; i++) {
-//     t = await translator.gTranslateSentence(testStrings[i]);
+//     let s = testStrings[i];
+//     // s = translator.detransliterate(translator.buckDict.removeHarakat(translator.transliterate(s)));
+//     // t = await translator.gptTranslateText(s);
+//     t = await translator.gTranslateSentence(s);
+//     console.log(t);
+// }
+//
+// t = await translator.gTranslateSentence(testStrings[0]);
+// console.log(t);
+
+t = await translator.gTranslateSentence(testStrings.slice(-2)[0]);
+console.log(t);
+
+
+//merge dup pref
+// let words = [ "تَجْري", "تَخَافُ", "تَأْكُلَهَا", "تَلْحَقَهُ"]
+
+//merge dup stem
+// let words = ["أَيْنَ"]
+
+//merge dup exact
+// let words = ["الْمَكَّارَُ", "الْكَبِيرَةِ"]
+
+//shadda
+// let words = ["وَقَفَتْ", "النَّوْمُ", "حَسَّتْ", "مَنامِها"]
+
+// for (let i = 0; i < words.length; i++) {
+//     let t = await translator.translateArabicWord(words[i]);
 //     console.log(t);
 // }
 
-// t = await translator.gTranslateSentence(testStrings[1]);
+// let t = await translator.translateArabicWord(words[3]);
 // console.log(t);
-
-// t = await translator.gTranslateSentence(testStrings.slice(-1)[0]);
-// console.log(t);
-
-// let w1 =  "تَجْري";
-// let t1 = await translator.translateArabicWord(w1);
-// console.log(t1);
-
-// let w2 = "تَخَافُ";
-// let t2 = await translator.translateArabicWord(w2);
-// console.log(t2);
-
-
-
-// let w3 =  "تَأْكُلَهَا";
-// let t3 = await translator.translateArabicWord(w3);
-// console.log(t3);
-
-let w4 =  "تَلْحَقَهُ";
-let t4 = await translator.translateArabicWord(w4);
-console.log(t4);

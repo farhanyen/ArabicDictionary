@@ -41,11 +41,12 @@ async function openBook(e){
 
     // rendition.themes.default({ "p": { "font-family": "initial", "font-weight": "400", "font-size": "22px !important"}})
     // rendition.themes.default({ "p": {"font-weight": "400", "font-size": "22px !important"}})
-    // rendition.themes.default({ "p": { "font-family": "Times New Roman", "font-weight": "400", "font-size": "22px !important"}})
+    // rendition.themes.default({ "p": { "font-family": "Damascus", "font-weight": "normal", "font-size": "20px !important"}})
     // rendition.themes.default({ "p": { "font-family": "Tahoma", "font-weight": "400", "font-size": "24px !important"}})
     // rendition.themes.default({ "p": { "font-family": "Times", "font-weight": "normal", "font-size": "20px !important"}})
     // rendition.themes.default({ "p": { "font-family": "Noto", "font-weight": "normal", "font-size": "20px !important"}})
-    rendition.themes.default({ "p": { "font-family": "Noto Sans Arabic", "font-weight": "normal", "font-size": "20px !important"}})
+    // rendition.themes.default({ "p": { "font-family": "Noto Sans Arabic", "font-weight": "normal", "font-size": "20px !important"}})
+    rendition.themes.default({ "p": { "font-family": "Helvetica Neue", "font-weight": "normal", "font-size": "20px !important"}})
 
 
     console.log(book);

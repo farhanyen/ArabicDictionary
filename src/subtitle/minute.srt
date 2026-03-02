@@ -1,0 +1,16 @@
+1
+00:00:00 --> 00:00:04
+ Welcome to the Pets Show, that is, physics explained in ten seconds.
+
+2
+00:00:04 --> 00:00:08
+ For the next month, in addition to MinutePhysics, I'll be making one ten-second video every
+
+3
+00:00:08 --> 00:00:08
+ day.
+
+4
+00:00:08 --> 00:00:11
+ Ten seconds of physics explaining, five seconds of titles on either end.
+

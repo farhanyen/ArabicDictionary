@@ -1,32 +1,5 @@
-let isNodeJS = typeof window === 'undefined'
-if (isNodeJS)
-    globalThis.fetch = (await import("node-fetch")).default;
-async function readLocalFile(fp) {
-    const fs = await import('fs')
-
-    const path = await import('path')
-    const {fileURLToPath} = await import('url')
-    const __filename = fileURLToPath(import.meta.url)
-    const __dirname = path.dirname(__filename)
-
-    const data = await fs.promises.readFile(path.resolve(__dirname, fp), { encoding: 'utf8' })
-    return data
-}
-
-async function readExtensionFile(fp) {
-    const url = chrome.runtime.getURL(fp)
-    const response = await fetch(url)
-    const text = await response.text()
-    return text
-}
-
-async function readFile(fp) {
-    if (typeof window === 'undefined') {
-        return readLocalFile(fp)
-    } else {
-        return readExtensionFile(fp)
-    }
-}
+// import readFile from './filereader.node.js'
+import readFile from './filereader.browser.js'
 
 function MorphTable(fp) {
     this.filePath = fp
@@ -54,7 +27,7 @@ MorphTable.prototype.get = function(key) {
     if (!this.contains(key)) {
         return null
     }
-    return this.key
+    return this.key;
 }
 
 MorphTable.prototype.addEntry = function(key, value) {
@@ -109,7 +82,7 @@ function BuckDict() {
 }
 
 BuckDict.prototype.init = async function() {
-    // const utilsURL = isNodeJS ? './utils.js' : chrome.runtime.getURL('./utils.js');
+    // const utilsURL = isNodeJS ? './utils.js' : chrome.runtime.getURL('./src/utils.js');
     // const {Utils} = await import(utilsURL)
     // this.utils = new Utils()
 
@@ -177,25 +150,15 @@ BuckDict.prototype.initBuck = function() {
     }
 
     this.harakat = ['F','N','K','a','u','i','~','o','`']
-
-    this.stripMods = {
-        '|': 'A',
-        '>': 'A',
-        '<': 'A',
-        '{': 'A',
-        '&': 'w',
-        'Y': 'y',
-        'p': 'h'
-    }
 }
 
 BuckDict.prototype.loadDictData = async function() {
-    this.tableab = new MorphTable("./data/tableab")
-    this.tableac = new MorphTable("./data/tableac")
-    this.tablebc = new MorphTable("./data/tablebc")
-    this.dictPref = new DictTable("./data/dictprefixes")
-    this.dictStem = new DictTable("./data/dictstems")
-    this.dictSuff = new DictTable("./data/dictsuffixes")
+    this.tableab = new MorphTable("src/data/tableab")
+    this.tableac = new MorphTable("src/data/tableac")
+    this.tablebc = new MorphTable("src/data/tablebc")
+    this.dictPref = new DictTable("src/data/dictprefixes")
+    this.dictStem = new DictTable("src/data/dictstems")
+    this.dictSuff = new DictTable("src/data/dictsuffixes")
 
     await Promise.all([this.tableab.init(), this.tablebc.init(), this.tableac.init(), this.dictPref.init(), this.dictStem.init(), this.dictSuff.init()])
 }
@@ -221,10 +184,10 @@ BuckDict.prototype.getSegmentsTransList = function(pref, stem, suff) {
                     // prefEntry: prefEntry,
                     // stemEntry: stemEntry,
                     // suffEntry: suffEntry,
-                    prefSet: prefEntry.def ? prefEntry.def.split("/"): [],
-                    stemDef: stemEntry.def,
-                    suffSet: suffEntry.def ? suffEntry.def.split("/"): [],
-                    root: stemEntry.root
+                    prefList: prefEntry.def ? prefEntry.def.split('/'): [],
+                    stemList: stemEntry.def ? stemEntry.def.split(';'): [],
+                    suffList: suffEntry.def ? suffEntry.def.split('/'): [],
+                    root: stemEntry.root,
                 }
                 transList.push(trans)
             }
@@ -255,45 +218,20 @@ BuckDict.prototype.removeHarakat = function(buckWord) {
     return buckWord.replace(new RegExp(this.harakat.join('|'), 'g'), '')
 }
 
-BuckDict.prototype.transListRemoveHarakatConflicts = function(transList, buckWord) {
-    let litWord = this.stripHarakat(buckWord)
-    let newList = [];
-    for (let trans of transList) {
-        if (this.matchWord(trans.word, litWord))
-            newList.push(trans)
-    }
-    if (newList.length > 0)
-        return newList
-    return transList
-}
-
-BuckDict.prototype.stripHarakat = function(buckWord) {
-    const h_chars = this.harakat.join('')
-    const re = new RegExp(`^[${h_chars}]*|[${h_chars}]*$`)
-    return buckWord.replace(re, '')
-}
-
-BuckDict.prototype.matchWord = function(w1, w2) {
-    w1 = this.removeLetterMods(w1), w2 = this.removeLetterMods(w2)
-    let ls1 = this.getLetters(w1), ls2 = this.getLetters(w2);
-    if (ls1.length != ls2.length) {
-        console.log("Different no of letters:", ls1, ls2);
-        return false;
-    }
-
-    for (let i = 0; i < ls1.length-1; i++) {
-        if (!this.compareLetters(ls1[i], ls2[i])) {
-            return false;
-        }
-    }
-    return true;
-}
-
 BuckDict.prototype.removeLetterMods = function(buckWord) {
-    function replacer(match, p1, offset, string) {
-        return this.stripMods[p1];
+    this.stripMods = {
+        '|': 'A',
+        '>': 'A',
+        '<': 'A',
+        '{': 'A',
+        '&': 'w',
+        'Y': 'y',
+        'p': 'h'
     }
-    return buckWord.replace(/(\||>|<|\{|&|Y|p)/g, replacer.bind(this))
+    function replacer(match) {
+        return this.stripMods[match];
+    }
+    return buckWord.replace(/\||>|<|\{|&|Y|p/g, replacer.bind(this))
 }
 
 BuckDict.prototype.getLetters = function(w) {
@@ -309,33 +247,76 @@ BuckDict.prototype.getLetters = function(w) {
     return letters;
 }
 
-BuckDict.prototype.compareLetters = function(l1, l2) {
+BuckDict.prototype.matchLettersHarakat = function(l1, l2) {
     let sub1 = l1.split('').every(c => l2.includes(c))
     let sub2 = l2.split('').every(c => l1.includes(c))
 
     return sub1 || sub2;
 }
 
+BuckDict.prototype.matchLettersShadda = function(l1, l2) {
+    return l1.includes('~') == l2.includes('~');
+}
+
+BuckDict.prototype.matchWord = function(w1, w2) {
+    // w1 = this.stripHarakat(w1); w2 = this.stripHarakat(w2);
+    w1 = this.removeLetterMods(w1); w2 = this.removeLetterMods(w2);
+    let ls1 = this.getLetters(w1); let ls2 = this.getLetters(w2);
+    if (ls1.length != ls2.length) {
+        throw new Error (`Different no of letters: ${ls1} ${ls2}`);
+    }
+
+    for (let i = 0; i < ls1.length-1; i++) {
+        if (!this.matchLettersHarakat(ls1[i], ls2[i])) {
+            return false;
+        }
+    }
+
+    for (let i = 0; i < ls1.length; i++) {
+        if (!this.matchLettersShadda(ls1[i], ls2[i])) {
+            if (i >= 2 && ls1[i-2][0] == 'A' && ls1[i-1][0] == 'l')
+                continue;
+            return false;
+        }
+    }
+    return true;
+}
+
+BuckDict.prototype.transListRemoveHarakatConflicts = function(transList, buckWord) {
+    let newList = [];
+    for (let trans of transList) {
+        if (this.matchWord(trans.word, buckWord))
+            newList.push(trans)
+    }
+    if (newList.length > 0)
+        return newList
+    return transList
+}
+
 BuckDict.prototype.transListMergeDuplicate = function (transList) {
     let tl = transList;
     for (let i = 0; i < tl.length; i++) {
         for (let j = 0; j < tl.length; j++) {
-            if (tl[i].word != tl[j].word || tl[i].stemDef != tl[j].stemDef ||
-                tl[i].root != tl[j].root)
+            if (i == j)
                 continue;
 
-            if (tl[i].prefSet.sort().join() != tl[j].prefSet.sort().join() &&
-                tl[i].suffSet.sort().join() == tl[j].suffSet.sort().join()) {
-                tl[i].prefSet = Array.from(new Set([...tl[i].prefSet, ...tl[j].prefSet]));
-                tl.splice(j, 1);
-                return true;
-            }
+            let mustMatchKeys = ["word", "root","stemList"];
+            if (mustMatchKeys.some((k) => Array.from(tl[i][k]).sort().join() != Array.from(tl[j][k]).sort().join()))
+                continue;
 
-            if (tl[i].suffSet.sort().join() != tl[j].suffSet.sort().join() &&
-                tl[i].prefSet.sort().join() == tl[j].prefSet.sort().join()){
-                tl[i].suffSet = Array.from(new Set([...tl[i].suffSet, ...tl[j].suffSet]));
+            let mergeKeys = ["prefList", "suffList"];
+            let matches = mergeKeys.map((k) => tl[i][k].sort().join() == tl[j][k].sort().join());
+            let matchCount = matches.reduce((a, b) => a+b, 0);
+
+            if (matchCount == mergeKeys.length) {
                 tl.splice(j, 1);
-                return true;
+                return true
+            }
+            if (matchCount == mergeKeys.length-1) {
+                let diffKey = mergeKeys.filter(k => !matches[mergeKeys.indexOf(k)])[0];
+                tl[i][diffKey] = Array.from(new Set([...tl[i][diffKey], ...tl[j][diffKey]]));
+                tl.splice(j, 1);
+                return true
             }
         }
     }
@@ -353,7 +334,8 @@ BuckDict.prototype.translateBuckWord = function (buckWord) {
     tl = this.transListMergeDuplicates(tl);
 
     for (let t of tl) {
-        t.def = (t.prefSet.length > 0 ? `[${t.prefSet.join('/')}] `:'') + t.stemDef + (t.suffSet.length > 0 ? ` [${t.suffSet.join('/')}]`:'');
+        t.def = (t.prefList.length > 0 ? `[${t.prefList.join('/')}] `:'') + t.stemList.join(';') + (t.suffList.length > 0 ? ` [${t.suffList.join('/')}]`:'');
+        delete t.prefList; delete t.stemList; delete t.suffList;
     }
     return tl;
 }
@@ -396,27 +378,26 @@ BuckDict.prototype.translateArabicWord = function(uniWord) {
     return this.translateUniWord(uniWord)
 }
 
-export {BuckDict}
-
+export default BuckDict
 
 BuckDict.prototype.buckStrip = function(buckWord) {
     buckWord = this.removeLetterMods(buckWord)
     return this.removeHarakat(buckWord)
 }
 
-const exceptions = [
-    "|nA'}",
-    "bay~umiy~",
-    "mAjAhiyr",
-    "jahowA'",
-    "ra&uwf",
-    "ra&uwf",
-    "salomawiy~",
-    "guwAyAnA",
-    "faroHAt",
-    "na$A$iybiy~"
-]
-
+// const exceptions = [
+//     "|nA'}",
+//     "bay~umiy~",
+//     "mAjAhiyr",
+//     "jahowA'",
+//     "ra&uwf",
+//     "ra&uwf",
+//     "salomawiy~",
+//     "guwAyAnA",
+//     "faroHAt",
+//     "na$A$iybiy~"
+// ]
+//
 // import assert from 'assert';
 // for (const key in this.dictStem) {
 //     if (key == "fp" || typeof this.dictStem[key] === 'function')

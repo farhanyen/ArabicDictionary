@@ -1,14 +1,22 @@
-let isNodeJS = typeof window === 'undefined'
-if (isNodeJS)
-    globalThis.fetch = (await import("node-fetch")).default;
+import BuckDict from './buckdict.js';
+import Scanner from './scanner.js';
+import Gpt from './gpt.js';
 
+// let isNodeJS = typeof window === 'undefined'
+// if (isNodeJS) {
+//     globalThis.fetch = (await import("node-fetch")).default;
+//     globalThis.Headers = (await import("node-fetch")).Headers;
+// }
+
+const TransMode = ({
+    RAWGTRANSLATE: 0,
+    GTRANSLATE: 1,
+    GPT: 2
+})
 function Translator() {
-
 }
 
 Translator.prototype.init = async function() {
-    const buckDictURL = isNodeJS ? './buckdict.js' : chrome.runtime.getURL('./buckdict.js');
-    const {BuckDict} = await import(buckDictURL)
     this.buckDict = new BuckDict()
     await this.buckDict.init()
 
@@ -16,9 +24,9 @@ Translator.prototype.init = async function() {
     this.transliterate = this.buckDict.transliterate.bind(this.buckDict)
     this.detransliterate = this.buckDict.detransliterate.bind(this.buckDict)
 
-    const scannerURL = isNodeJS ? './scanner.js' : chrome.runtime.getURL('./scanner.js');
-    const {Scanner} = await import(scannerURL)
-    this.scanner = Scanner
+    this.gpt = new Gpt();
+
+    this.transMode = TransMode.GTRANSLATE;
 }
 
 Translator.prototype.isArabicChar = function(c) {
@@ -29,6 +37,14 @@ Translator.prototype.translateArabicWord = function(uniWord) {
     return this.buckDict.translateArabicWord(uniWord);
 }
 
+Translator.prototype.gTranslateRaw = async function(s) {
+    s = s.replace(/[\n\t]/g, "");
+    s = s.replace(/ +/g, " ").trim();
+
+    let tList = await this.gTranslateText(s);
+
+    return tList.join("");
+}
 
 Translator.prototype.gTranslateText = async function(s) {
     let apiroot = "https://translate.googleapis.com/translate_a/single?"
@@ -47,7 +63,7 @@ Translator.prototype.gTranslateText = async function(s) {
     if (response.status != 200)
         return null;
     let body = await response.json();
-    let tlist = body["sentences"].map(s => s["trans"])
+    let tlist = body["sentences"].map(s => s["trans"]);
 
     return tlist;
 }
@@ -78,7 +94,6 @@ Translator.prototype.concatGTransList = function(slist) {
             slist[i-1] = slist[i-1].slice(0, -1) + "."
     }
 
-    
     return slist.join(" ");
 }
 
@@ -95,17 +110,17 @@ Translator.prototype.gTranslateSentence = async function(s) {
     ])
 
     let t1 = this.concatGTransList(tList1);
-    let pt1 = new this.scanner(t1, false);
-    pt1.scanChunks();
-    
     let t2 = this.concatGTransList(tList2);
-    let pt2 = new this.scanner(t2, false);
+
+    let pt1 = new Scanner(t1, false);
+    pt1.scanChunks();
+    let pt2 = new Scanner(t2, false);
     pt2.scanChunks();
 
     if (pt1.firstMidPeriodChunk != -1) {
-        return this.spliceRetryTranslateSentence(s1, pt1);
+        return this.spliceAtPeriodThenReTranslate(s1, pt1);
     } else if (pt2.firstMidPeriodChunk != -1) {
-        return this.spliceRetryTranslateSentence(s2, pt2);
+        return this.spliceAtPeriodThenReTranslate(s2, pt2);
     }
 
     let t = t1;
@@ -135,44 +150,86 @@ Translator.prototype.gTranslateSentence = async function(s) {
     return t;
 }
 
-Translator.prototype.spliceRetryTranslateSentence = async function (s, transParser) {
-    let pt = transParser;
+Translator.prototype.spliceClausesThenReTranslate = async function(s) {
+    let clauses = s.split("،");
+    clauses = clauses.map(c => c+"،");
+    clauses[clauses.length-1] = clauses[clauses.length-1].slice(0, -1)
 
-    let pa = new this.scanner(s, true);
-    pa.scanChunks();
-    let chunks = pa.chunks;
-
-    let breakChunkFromLast = pa.chunks.length - pt.firstMidPeriodChunk;
-    if (pt.chunks[pt.firstMidPeriodChunk].slice(-1) == "." && pt.chunks.length == pa.chunks.length && pt.firstMidPeriodChunk < pt.chunks.length-1)
-        breakChunkFromLast--;
-
-    function lastNChunkstoLongChunk(chunks, n) {
-        let longChunk = false; let chunkLen = 0;
-        for (let i = 1; i < chunks.length; i++) {
-            let chunk = chunks[chunks.length-i];
-            if (chunk.slice(-1) == "،")
-                chunkLen = 0;
-            chunkLen += chunk.split(" ").length;
-            if (chunkLen > 3)
-                longChunk = true;
-
-            if (i >= n && longChunk && chunks[chunks.length-i-1].slice(-1) == "،")
-                return i;
+    let longClauses = []; let clause = "";
+    for (let i = 0; i < clauses.length-1; i++) {
+        clause += clauses[i];
+        if (clauses[i+1].split(" ").length > 3) {
+            longClauses.push(clause);
+            clause = "";
         }
-        return n;
     }
-    let i = lastNChunkstoLongChunk(chunks, breakChunkFromLast);
+    clause += clauses[clauses.length-1];
+    longClauses.push(clause);
 
-    let s1 = chunks.slice(0, chunks.length-i).join(" ");
-    let s2 = chunks.slice(chunks.length-i).join(" ");
+    let modS = longClauses.join(". ");
+    let tList = await this.gTranslateText(modS);
+    let newT = this.concatGTransList(tList);
+    return newT;
+}
+
+Translator.prototype.spliceAtPeriodThenReTranslate = async function (s, pt) {
+    let breakChunk = pt.firstMidPeriodChunk;
+    if (pt.chunks[pt.firstMidPeriodChunk].slice(-1) == "." && pt.firstMidPeriodChunk < pt.chunks.length-1)
+        breakChunk++;
+
+    let pa = new Scanner(s, true);
+    pa.scanChunks();
+
+    let arClauses = []; let clauseChunks = []; let breakClause = -1;
+    for (let i = 0; i < pa.chunks.length; i++) {
+        clauseChunks.push(pa.chunks[i]);
+        if (pa.chunks[i].slice(-1) == "،" || i == pa.chunks.length - 1) {
+            arClauses.push(clauseChunks.join(" "));
+            clauseChunks = [];
+            if (breakClause == -1 && i >= breakChunk) {
+                breakClause = arClauses.length-1;
+            }
+        }
+    }
+
+    let lastLongClause;
+    for (let i = arClauses.length-1; i >= 0; i--) {
+        if (arClauses[i].split(" ".length > 3)) {
+            lastLongClause = i;
+            break;
+        }
+    }
+
+    breakClause = Math.min(breakClause, lastLongClause);
+
+    let s1 = arClauses.slice(0, breakClause).join(" ");
+    let s2 = arClauses.slice(breakClause).join(" ");
 
     s1 = s1.slice(0, -1) + ".";
     let modS = s1 + "\n" + s2;
-    modS = modS.replace(/«|»/g, '')
 
     let tList = await this.gTranslateText(modS);
-    let t = this.concatGTransList(tList);
-    return t;
+    let newT = this.concatGTransList(tList);
+    return newT;
 }
 
-export {Translator}
+Translator.prototype.translateArabicSentence = async function(s) {
+    switch (this.transMode) {
+        case TransMode.RAWGTRANSLATE:
+            return await this.gTranslateRaw(s);
+            break;
+        case TransMode.GTRANSLATE:
+            return await this.gTranslateSentence(s);
+            break;
+        // case TransMode.GPT:
+        //     return await this.gpt.translateSentenceInElement(s, el);
+        //     break;
+    }
+}
+
+Translator.prototype.translateArabicPhrase = async function(s) {
+    return await this.gTranslatePhrase(s);
+    // return await this.gptTranslateText(s);
+}
+
+export default Translator

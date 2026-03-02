@@ -26,4 +26,4 @@ Utils.prototype.setEqual = function(s1, s2) {
     return s1.size == s2.size && s1.size == this.mergeSet(s1,s2).size;
 }
 
-export {Utils}
+export default Utils

@@ -131,6 +131,6 @@ Scanner.prototype.scanChunks = function() {
     return this.chunks;
 }
 
-export {Scanner}
+export default Scanner
 
 

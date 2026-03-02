@@ -14,8 +14,9 @@ describe('translateArabicWord', () => {
     it("رَبُّه", () => {
         const result = translator.translateArabicWord("رَبُّه")
         expect(result).toEqual([
-            {word: 'رَبّه', def: 'lord;master [its/his]', root: 'رب' },
-            {word: 'رَبّه', def: 'owner;proprietor [its/his]', root: 'رب' },
+            // {word: 'رَبّه', def: 'lord;master [its/his]', root: 'رب' },
+            // {word: 'رَبّه', def: 'owner;proprietor [its/his]', root: 'رب' },
+            {word: 'رَبّه', def: 'lord;master;owner;proprietor [his/its]', root: 'رب' },
         ])
     });
 

@@ -1,3 +1,4 @@
+// import { PitchShifter } from 'soundtouchjs';
 function isPdfDownloadable(details) {
   if (details.url.includes('pdfjs.action=download')) {
     return true;
@@ -141,13 +142,50 @@ chrome.webRequest.onBeforeRequest.addListener(
 // chrome.browserAction.onClicked.addListener(updateIcon);
 
 
+// chrome.identity.getProfileUserInfo({'accountStatus': 'ANY'}, function(info) {
+//     let email = info.email;
+//     console.log(info);
+//     document.querySelector('textarea').value=JSON.stringify(info);
+// });
+
+async function playAudio(audioBuf, spd) {
+    const ctx = new AudioContext();
+    let audio = await ctx.decodeAudioData(audioBuf);
+
+    const playSound = ctx.createBufferSource();
+    playSound.buffer = audio;
+    playSound.playbackRate.value = spd;
+    playSound.connect(ctx.destination);
+    playSound.start(ctx.currentTime);
+}
+
+const subscriptionKey = 'be18db73754841b1a57106172cc0e30d';
+const serviceRegion = 'eastus';
+const ttsEndpoint = `https://${serviceRegion}.tts.speech.microsoft.com/cognitiveservices/v1`;
+
+function textToSpeech(text) {
+    const body = `<speak version='1.0' xml:lang='ar-SA'><voice xml:lang='ar-SA' xml:gender='Male' name='ar-SA-HamedNeural'>
+                        <prosody rate='0.9'>
+                            ${text}
+                        </prosody></voice></speak>`;
+
+    return fetch(ttsEndpoint, {
+        method: 'POST',
+        headers: {
+            'Ocp-Apim-Subscription-Key': subscriptionKey,
+            'Content-Type': 'application/ssml+xml',
+            'X-Microsoft-OutputFormat': 'audio-16khz-64kbitrate-mono-mp3'
+        },
+        body: body
+    }).then(response => response.arrayBuffer());
+}
 chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     (async function () {
         if (req.contentScriptQuery == "tts") {
             const apiroot = "https://translate.googleapis.com/translate_tts?";
             let params = {
                 client: "gtx",
-                ie: ":UTF-8",
+                ie: "UTF-8",
                 tl: "ar",
                 tk: "435555.435555",
                 q: req.text
@@ -162,13 +200,14 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
             }
 
             let audioBuf = await response.arrayBuffer();
-            const ctx = new AudioContext();
-            let audio = await ctx.decodeAudioData(audioBuf);
+            await playAudio(audioBuf, 1.1);
 
-            const playSound = ctx.createBufferSource();
-            playSound.buffer = audio;
-            playSound.connect(ctx.destination);
-            playSound.start(ctx.currentTime);
+            sendResponse();
+        }
+        if (req.contentScriptQuery == "tts_azure") {
+            let buffer = await textToSpeech(req.text);
+
+            await playAudio(buffer, 1);
 
             sendResponse();
         }

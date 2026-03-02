@@ -1,0 +1,45 @@
+{
+  "manifest_version": 2,
+  "name": "Arabic Dictionary",
+  "version": "2.0",
+  "background": {
+    "scripts": ["src/background.js"],
+    "run_at": "document_start"
+  },
+  "content_security_policy": "script-src 'self' ; object-src 'self'",
+  "content_scripts": [
+    {
+      "run_at": "document_idle",
+      "matches": ["<all_urls>"],
+      "all_frames": true,
+      "js": ["dist/content.js"],
+      "css": ["src/tooltip.css", "src/selection.css", "src/subtitle/subtitle.css"]
+    }
+  ],
+  "description": "Arabic Dictionary Extension",
+  "icons": {
+    "48": "img/icon48.png",
+    "128": "img/icon128.png"
+  },
+  "browser_action": {
+    "name": "Click to change the icon's color"
+  },
+  "web_accessible_resources": [
+    "src/scanner.js",
+    "src/buckdict.js",
+    "src/translator.js",
+    "src/tooltip.js",
+    "src/data/*",
+    "src/subtitle/*",
+    "src/selection.css",
+    "src/anki.js",
+    "src/gpt.js"
+  ],
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "<all_urls>",
+    "identity",
+    "identity.email"
+  ]
+}

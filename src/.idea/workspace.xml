@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="b32b62f9-644e-433c-8fe1-b430f6f51c76" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/../dist/background.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../dist/content.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../index.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../jsconfig.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../manifest.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/src.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/anki.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data/henry.srt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/filereader.browser.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/filereader.node.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gpt.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/selector.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/subtitle/ds_arabic.srt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/subtitle/henry.srt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/subtitle/minute.srt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/subtitle/script.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/subtitle/subtitle.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/subtitle/subtitle.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test2.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/whisper.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../test2.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../vite.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../spec/translator.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/../spec/translator.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src.zip" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/background.js" beforeDir="false" afterPath="$PROJECT_DIR$/background.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/buckdict.js" beforeDir="false" afterPath="$PROJECT_DIR$/buckdict.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/contentscript.js" beforeDir="false" afterPath="$PROJECT_DIR$/content.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/aramorph-db" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/epub.js/viewer/epubInput.js" beforeDir="false" afterPath="$PROJECT_DIR$/epub.js/viewer/epubInput.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/epub.js/viewer/viewer.html" beforeDir="false" afterPath="$PROJECT_DIR$/epub.js/viewer/viewer.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/img/desc_1.png" beforeDir="false" afterPath="$PROJECT_DIR$/../img/desc_1.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/img/desc_2.png" beforeDir="false" afterPath="$PROJECT_DIR$/../img/desc_2.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/img/icon128.png" beforeDir="false" afterPath="$PROJECT_DIR$/../img/icon128.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/img/icon48.png" beforeDir="false" afterPath="$PROJECT_DIR$/../img/icon48.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/img/near.png" beforeDir="false" afterPath="$PROJECT_DIR$/../img/near.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/img/translation_128.png" beforeDir="false" afterPath="$PROJECT_DIR$/../img/translation_128.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/img/translation_16.png" beforeDir="false" afterPath="$PROJECT_DIR$/../img/translation_16.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/img/translation_48.png" beforeDir="false" afterPath="$PROJECT_DIR$/../img/translation_48.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/img/translation_off_16.png" beforeDir="false" afterPath="$PROJECT_DIR$/../img/translation_off_16.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/img/under.png" beforeDir="false" afterPath="$PROJECT_DIR$/../img/under.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/manifest.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/myTest.js" beforeDir="false" afterPath="$PROJECT_DIR$/myTest.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pdf.js/web/viewer.html" beforeDir="false" afterPath="$PROJECT_DIR$/pdf.js/web/viewer.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/popup.html" beforeDir="false" afterPath="$PROJECT_DIR$/toggle.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/popup.js" beforeDir="false" afterPath="$PROJECT_DIR$/toggle.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scanner.js" beforeDir="false" afterPath="$PROJECT_DIR$/scanner.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tooltip.js" beforeDir="false" afterPath="$PROJECT_DIR$/tooltip.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/translator.js" beforeDir="false" afterPath="$PROJECT_DIR$/translator.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/translatorTest.js" beforeDir="false" afterPath="$PROJECT_DIR$/translatorTest.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils.js" beforeDir="false" afterPath="$PROJECT_DIR$/utils.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="JavaScript File" />
+        <option value="CSS File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="ProjectId" id="2SSqAXWrW0Lv7QWVIujEOVuCU0q" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+    <option name="sortByType" value="true" />
+    <option name="sortKey" value="BY_TYPE" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/farha/Documents/WebstormProjects/Translators/ArabicDictionary/src&quot;,
+    &quot;list.type.of.created.stylesheet&quot;: &quot;CSS&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="b32b62f9-644e-433c-8fe1-b430f6f51c76" name="Changes" comment="" />
+      <created>1689150186599</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1689150186599</updated>
+      <workItem from="1689150187736" duration="716000" />
+      <workItem from="1689820409368" duration="6004000" />
+      <workItem from="1706007840495" duration="8348000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/translatorTest.js</url>
+          <line>38</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/translator.js</url>
+          <line>107</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>

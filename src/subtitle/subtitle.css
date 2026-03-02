@@ -1,0 +1,12 @@
+div .vidSub {
+    z-index: 100;
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    /*margin:auto;*/
+
+    background-color: black;
+    color: white;
+    font-size: 20px;
+}

@@ -1,36 +1,40 @@
-let tooltip
-function createToolTip() {
-    tooltip = document.createElement("span")
-    tooltip.id = "transToolTip"
+
+function Tooltip() {
+    this.createToolTip()
+}
+
+Tooltip.prototype.createToolTip = function() {
+    this.tooltip = document.createElement("span")
+    this.tooltip.id = "transToolTip"
     const tooltipCSSText = `
             visibility: hidden;
             position: fixed;
             z-index: 100;
         `
     // console.log(tooltipCSSText)
-    tooltip.style.cssText = tooltipCSSText
+    this.tooltip.style.cssText = tooltipCSSText
     // console.log(tooltip.style.cssText)
 
-    document.body.appendChild(tooltip)
+    document.body.appendChild(this.tooltip)
 }
 
-function displayTransListTooltip(el, selectRangeList, transList) {
-    tooltip.innerHTML = createTransPopupHTML(transList)
+Tooltip.prototype.displayTransListTooltip = function(el, selectRangeList, transList) {
+    this.tooltip.innerHTML = this.createTransPopupHTML(transList)
 
-    positionTooltip(el, selectRangeList)
+    this.positionTooltip(el, selectRangeList)
 
-    tooltip.style.visibility = "visible"
+    this.tooltip.style.visibility = "visible"
 }
 
-function displayTextTooltip(el, selectRangeList, text) {
-    tooltip.innerHTML = createTextPopupHTML(text);
-    
-    positionTooltip(el, selectRangeList)
-    tooltip.style.visibility = "visible"
+Tooltip.prototype.displayTextTooltip = function(el, selectRangeList, text) {
+    this.tooltip.innerHTML = this.createTextPopupHTML(text);
+
+    this.positionTooltip(el, selectRangeList)
+    this.tooltip.style.visibility = "visible"
 }
 
 
-function createTransPopupHTML(transList) {
+Tooltip.prototype.createTransPopupHTML = function(transList) {
     let str = ""
     str += "<table class = 'tooltip-table'>"
     if (transList.length == 0) {
@@ -38,7 +42,6 @@ function createTransPopupHTML(transList) {
         str += "<td>No definition found</td>"
         str += "</tr>"
         str += "</table>"
-        // str += "</div>"
         return str
     }
 
@@ -59,7 +62,7 @@ function createTransPopupHTML(transList) {
     return str
 }
 
-function createTextPopupHTML(text) {
+Tooltip.prototype.createTextPopupHTML = function(text) {
     let str = ""
     str += "<table class = 'tooltip-table'>"
 
@@ -70,16 +73,20 @@ function createTextPopupHTML(text) {
     return str
 }
 
-function setTextPopupHTML(text) {
-    tooltip.innerHTML = createTextPopupHTML(text)
+Tooltip.prototype.setTextPopupHTML = function(text) {
+    this.tooltip.innerHTML = this.createTextPopupHTML(text)
 }
 
-function OOB(r) {
+Tooltip.prototype.appendHTML = function(html) {
+    this.tooltip.innerHTML += html;
+}
+
+Tooltip.prototype.OOB = function(r) {
     return r.top < 0 || r.bottom > window.innerHeight || r.left < 0 || r.right > window.innerWidth;
 }
 
-//NOTE: bottom & right are Different for js rect and css position!
-function positionTooltip(el, rangeList) {
+//NOTE: bottom & right are Different for rect (js) and position (css)!
+Tooltip.prototype.positionTooltip = function(el, rangeList) {
     let rl = rangeList;
 
     let rT = rl[0];
@@ -99,48 +106,47 @@ function positionTooltip(el, rangeList) {
     }
 
     let c = cl.tr;
-    tooltip.style.bottom = `${window.innerHeight - c.y}px`
-    tooltip.style.left = `${c.x}px`
-    tooltip.style.top = 'auto'
-    tooltip.style.right = 'auto'
-    let tipRect = tooltip.getBoundingClientRect()
-    if (!OOB(tipRect))
+    this.tooltip.style.bottom = `${window.innerHeight - c.y}px`
+    this.tooltip.style.left = `${c.x}px`
+    this.tooltip.style.top = 'auto'
+    this.tooltip.style.right = 'auto'
+    let tipRect = this.tooltip.getBoundingClientRect()
+    if (!this.OOB(tipRect))
         return;
 
     c = cl.br;
-    tooltip.style.top = `${c.y}px`
-    tooltip.style.left = `${c.x}px`
-    tooltip.style.bottom = 'auto'
-    tooltip.style.right = 'auto'
-    tipRect = tooltip.getBoundingClientRect()
-    if (!OOB(tipRect))
+    this.tooltip.style.top = `${c.y}px`
+    this.tooltip.style.left = `${c.x}px`
+    this.tooltip.style.bottom = 'auto'
+    this.tooltip.style.right = 'auto'
+    tipRect = this.tooltip.getBoundingClientRect()
+    if (!this.OOB(tipRect))
         return;
 
     c = cl.bl;
-    tooltip.style.top = `${c.y}px`
-    tooltip.style.right = `${window.innerWidth - c.x}px`
-    tooltip.style.bottom = 'auto'
-    tooltip.style.left = 'auto'
-    tipRect = tooltip.getBoundingClientRect()
-    if (!OOB(tipRect))
+    this.tooltip.style.top = `${c.y}px`
+    this.tooltip.style.right = `${window.innerWidth - c.x}px`
+    this.tooltip.style.bottom = 'auto'
+    this.tooltip.style.left = 'auto'
+    tipRect = this.tooltip.getBoundingClientRect()
+    if (!this.OOB(tipRect))
         return;
 
     c = cl.tl;
-    tooltip.style.bottom = `${window.innerHeight - c.y}px`
-    tooltip.style.right = `${window.innerWidth - c.x}px`
-    tooltip.style.top = 'auto'
-    tooltip.style.left = 'auto'
-    tipRect = tooltip.getBoundingClientRect()
-    if (!OOB(tipRect))
+    this.tooltip.style.bottom = `${window.innerHeight - c.y}px`
+    this.tooltip.style.right = `${window.innerWidth - c.x}px`
+    this.tooltip.style.top = 'auto'
+    this.tooltip.style.left = 'auto'
+    tipRect = this.tooltip.getBoundingClientRect()
+    if (!this.OOB(tipRect))
         return;
 
-    throw new Error("Couldn't position tooltip within bounds on any of 4 range corners");
+    throw new Error("Couldn't position this.tooltip within bounds on any of 4 range corners");
 }
 
-function hideToolTip() {
-    tooltip.style.visibility = "hidden"
+Tooltip.prototype.hideToolTip = function() {
+    this.tooltip.style.visibility = "hidden"
 }
 
-createToolTip()
 
-export {displayTransListTooltip, hideToolTip, displayTextTooltip, setTextPopupHTML}
+export default Tooltip
